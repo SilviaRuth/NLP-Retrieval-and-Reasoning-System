@@ -1,7 +1,9 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
+import time
 
 import torch
 
@@ -9,6 +11,7 @@ from data import load_nli_dataset
 from models import BertNLIClassifier, build_tokenizer
 from pipeline import RetrievalReasoningPipeline
 from retrieval import FaissSentenceRetriever
+from utils import ensure_dir
 
 
 def parse_args() -> argparse.Namespace:
@@ -18,7 +21,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint-dir")
     parser.add_argument("--embedding-model", default="sentence-transformers/all-MiniLM-L6-v2")
     parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--candidate-k", type=int)
     parser.add_argument("--max-length", type=int, default=256)
+    parser.add_argument("--entailment-weight", type=float, default=0.65)
+    parser.add_argument("--disable-reranking", action="store_true")
+    parser.add_argument("--output-path")
     parser.add_argument("--local-files-only", action="store_true")
     return parser.parse_args()
 
@@ -48,9 +55,30 @@ def main() -> None:
         classifier=classifier,
         tokenizer=tokenizer,
         max_length=args.max_length,
+        entailment_weight=args.entailment_weight,
     )
-    results = pipeline.retrieve_and_rerank(args.query, top_k=args.top_k)
-    print(json.dumps(RetrievalReasoningPipeline.serialize(results), indent=2))
+    started_at = time.perf_counter()
+    results = pipeline.retrieve_and_rerank(
+        args.query,
+        top_k=args.top_k,
+        candidate_k=args.candidate_k,
+        rerank=not args.disable_reranking,
+    )
+    payload = {
+        "query": args.query,
+        "top_k": args.top_k,
+        "candidate_k": args.candidate_k,
+        "backend": retriever.backend,
+        "reranking_enabled": any(result.reranking_enabled for result in results),
+        "latency_ms": round((time.perf_counter() - started_at) * 1000, 2),
+        "results": RetrievalReasoningPipeline.serialize(results),
+    }
+    if args.output_path:
+        output_path = Path(args.output_path)
+        ensure_dir(output_path.parent)
+        with output_path.open("w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

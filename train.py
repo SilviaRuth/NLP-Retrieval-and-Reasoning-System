@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import copy
@@ -19,7 +19,7 @@ from data import (
 )
 from evaluation import analyze_errors, classification_metrics, evaluate_robustness
 from experiments import ExperimentTracker
-from models import BertNLIClassifier, BertNLIConfig, CNNNLIClassifier, LSTMNLIClassifier, build_tokenizer
+from models import BertNLIClassifier, BertNLIConfig, BiLSTMNLIClassifier, CNNNLIClassifier, build_tokenizer
 from utils import ensure_dir, set_seed, write_json
 
 
@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--val-path", required=True)
     parser.add_argument("--test-path")
     parser.add_argument("--output-dir", default="outputs/run")
-    parser.add_argument("--model-type", choices=["bert", "lstm", "cnn"], default="bert")
+    parser.add_argument("--model-type", choices=["bert", "bilstm", "lstm", "cnn"], default="bert")
     parser.add_argument("--model-name", default="bert-base-uncased")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--epochs", type=int, default=3)
@@ -118,6 +118,9 @@ def save_baseline_checkpoint(output_dir, model, vocab, label_to_id, args: argpar
 
 def main() -> None:
     args = parse_args()
+    if args.model_type == "lstm":
+        args.model_type = "bilstm"
+
     set_seed(args.seed)
     output_dir = ensure_dir(args.output_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -159,8 +162,8 @@ def main() -> None:
         val_dataset = TokenPairDataset(val_examples, vocab, label_to_id, args.max_length)
         test_dataset = TokenPairDataset(test_examples, vocab, label_to_id, args.max_length) if test_examples else None
 
-        if args.model_type == "lstm":
-            model = LSTMNLIClassifier(
+        if args.model_type == "bilstm":
+            model = BiLSTMNLIClassifier(
                 vocab_size=len(vocab),
                 pad_idx=vocab.word2idx["<pad>"],
                 num_labels=len(label_to_id),

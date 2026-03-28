@@ -1,0 +1,7 @@
+﻿model,split,accuracy,macro_f1,artifact_dir,status,notes
+bert_nli,validation,0.444,0.4432820026688584,outputs/bert_nli,completed,"Mirror of classification_results.csv for benchmark table exports."
+bert_nli,test,0.47,0.470189414833523,outputs/bert_nli,completed,"Mirror of classification_results.csv for benchmark table exports."
+bilstm_baseline,validation,0.333,0.16654163540885222,outputs/bilstm_baseline,completed,"Mirror of classification_results.csv for benchmark table exports."
+bilstm_baseline,test,0.333,0.16654163540885222,outputs/bilstm_baseline,completed,"Mirror of classification_results.csv for benchmark table exports."
+textcnn_baseline,validation,0.332,0.17010805329181014,outputs/textcnn_baseline,completed,"Mirror of classification_results.csv for benchmark table exports."
+textcnn_baseline,test,0.33,0.167495375508694,outputs/textcnn_baseline,completed,"Mirror of classification_results.csv for benchmark table exports."

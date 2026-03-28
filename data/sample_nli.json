@@ -1,0 +1,32 @@
+﻿[
+  {
+    "premise": "A soccer game with multiple men playing on a grass field.",
+    "hypothesis": "Several men are playing soccer outdoors.",
+    "label": "entailment"
+  },
+  {
+    "premise": "A woman is slicing vegetables in a bright kitchen.",
+    "hypothesis": "A person is preparing food indoors.",
+    "label": "entails"
+  },
+  {
+    "premise": "A child is sleeping on a sofa in the living room.",
+    "hypothesis": "The child is running through a park.",
+    "label": "contradiction"
+  },
+  {
+    "premise": "Two dogs are jumping to catch a frisbee.",
+    "hypothesis": "Animals are playing with a toy.",
+    "label": "entailment"
+  },
+  {
+    "premise": "A man in a suit is speaking at a conference podium.",
+    "hypothesis": "Someone is delivering a talk to an audience.",
+    "label": "neutral"
+  },
+  {
+    "premise": "People are waiting on a train platform during the evening.",
+    "hypothesis": "Commuters are standing near public transportation.",
+    "label": "neutral"
+  }
+]

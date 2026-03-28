@@ -1,0 +1,4 @@
+﻿model,perturbation,accuracy,macro_f1,status,notes
+bert_nli,typo,0.417,0.3898354535530078,completed,"Accuracy and macro F1 drop noticeably under character-level noise."
+bert_nli,paraphrase,0.446,0.44522296572950165,completed,"Paraphrase perturbations are close to the clean validation run."
+bert_nli,shuffle,0.39,0.3493075132866843,completed,"Word-order shuffling hurts the model the most."

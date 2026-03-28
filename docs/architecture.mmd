@@ -1,0 +1,9 @@
+﻿flowchart LR
+    A[User Query] --> B[Stage 1: Dense Retrieval\nSentenceTransformers + FAISS]
+    A --> C[Fallback Retrieval\nTF-IDF]
+    B --> D[Candidate Evidence]
+    C --> D
+    D --> E[Stage 2: NLI Reranker\nBERT classifier]
+    E --> F[Weighted Final Score\nretrieval + entailment]
+    F --> G[FastAPI / CLI Response]
+    G --> H[Metrics, Error Analysis, Robustness Artifacts]

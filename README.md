@@ -1,115 +1,141 @@
-# NLP Text Classification and Retrieval Reasoning
+﻿# NLP Retrieval and Reasoning System
 
-This repository upgrades the original CITS4012 group notebook into a modular NLP system that is easier to extend, evaluate, and present as a production-style project.
+This repository turns an NLI coursework notebook into a modular applied NLP system that is easier to benchmark, explain, and deploy. The project centers on a two-stage pipeline:
 
-It keeps the original Natural Language Inference (NLI) framing and adds:
+1. Stage 1 dense retrieval with SentenceTransformers + FAISS, with TF-IDF fallback.
+2. Stage 2 NLI reranking with a BERT classifier that scores entailment against each retrieved candidate.
 
-- Transformer fine-tuning with Hugging Face BERT
-- Retrieval with SentenceTransformers + FAISS, with a TF-IDF fallback
-- Evaluation metrics for classification and retrieval
-- Error analysis and robustness testing
-- Experiment tracking to JSON and CSV
-- An optional FastAPI inference layer
+The result is a cleaner portfolio story than a plain classifier demo: we can compare model families, evaluate retrieval quality, inspect reranking behavior, and serve the whole pipeline through FastAPI.
 
----
+## Architecture Diagram
 
-## Project Goals
+Rendered diagram: [docs/architecture.png](docs/architecture.png)
+Source diagram: [docs/architecture.mmd](docs/architecture.mmd)
 
-* Build a **retrieval + reasoning pipeline** similar to modern AI systems (e.g., Copilot, Bing)
-* Demonstrate **evaluation depth and research thinking**
+![Pipeline architecture](docs/architecture.png)
 
----
-
-## System Architecture
-
-### 1. Retrieval Layer
-
-* Vector embeddings using SentenceTransformers
-* FAISS index for similarity search
-* Top-K document retrieval
-
-### 2. Reasoning Layer (NLI)
-
-* Fine-tuned BERT/RoBERTa model
-* Classifies entailment / contradiction / neutral
-* Used for ranking and validation
-
-### 3. Evaluation Layer
-
-* Accuracy, Precision, Recall, F1
-* Recall@K, MRR (for retrieval)
-* Error categorization
-
-### 4. Robustness Testing
-
-* Noise injection (typos)
-* Paraphrasing
-* Word order perturbation
-
----
-
-## Key Features
-
-* 🔍 Retrieval + reasoning pipeline
-* 🧠 Fine-tuned Transformer models
-* 📉 Error analysis and failure categorization
-* ⚙️ Robustness evaluation under input perturbations
-* 📈 Experimental comparison across configurations
-
----
-
-## Experiments
-
-* BERT vs LSTM vs CNN comparison
-* Attention ablation study
-* Embedding dimension tuning
-* Retrieval performance (Recall@K, MRR)
-* Prompt / input variation impact
-
----
-
-## Project Layout
-
-```text
-project/
-|-- api/
-|-- data/
-|-- evaluation/
-|-- experiments/
-|-- models/
-|-- retrieval/
-|-- utils/
-|-- main.py
-|-- train.py
-|-- requirements.txt
-`-- README.md
+```mermaid
+flowchart LR
+    A[User Query] --> B[Stage 1: Dense Retrieval\nSentenceTransformers + FAISS]
+    A --> C[Fallback Retrieval\nTF-IDF]
+    B --> D[Candidate Evidence]
+    C --> D
+    D --> E[Stage 2: NLI Reranker\nBERT classifier]
+    E --> F[Weighted Final Score\nnormalized retrieval + entailment]
+    F --> G[CLI / FastAPI Response]
+    G --> H[Metrics, Robustness, Error Analysis]
 ```
 
-## Supported Data Format
+## Models and Baselines
 
-The loader supports both:
+- `BERT`: main high-capacity NLI classifier and reranker.
+- `BiLSTM`: recurrent baseline for sequence modeling comparison.
+- `TextCNN`: non-recurrent baseline for lightweight classification.
+- `SentenceTransformers + FAISS`: dense retriever.
+- `TF-IDF`: offline-safe retrieval fallback.
 
-1. A list of row objects:
+## Retrieval and Reasoning Pipeline
 
-```json
-[
-  {"premise": "...", "hypothesis": "...", "label": "entailment"}
-]
-```
+The repository now makes the reranking story explicit in both code and outputs.
 
-2. The original notebook-friendly columnar JSON format:
+- Stage 1 retrieves a candidate pool with dense retrieval or TF-IDF fallback.
+- Stage 2 scores each candidate with the NLI classifier using the query as hypothesis.
+- The pipeline normalizes retrieval scores, combines them with entailment probability, and returns a score breakdown for each result.
+- CLI and API responses now expose `retrieval_score`, `normalized_retrieval_score`, `entailment_score`, `final_score`, and `score_breakdown`.
+
+## Experimental Setup
+
+The intended benchmark package is documented in [docs/benchmark.md](docs/benchmark.md).
+
+Core runs:
+
+- BERT vs BiLSTM vs TextCNN classification.
+- Dense retrieval vs TF-IDF fallback.
+- Reranking off vs reranking on.
+- Robustness under typo, paraphrase, and shuffle noise.
+- Latency measurement for retrieval and full pipeline inference.
+
+Benchmark ledgers are checked in under [results/classification_results.csv](results/classification_results.csv), [results/retrieval_metrics.csv](results/retrieval_metrics.csv), and [results/robustness_summary.csv](results/robustness_summary.csv).
+
+## Benchmark Results
+
+The repository now includes local JSON splits under `data/` and run artifacts under `outputs/`. The tables below reflect the checked-in outputs from the current local run, not placeholder values.
+
+The current BERT checkpoint was trained with `bert-base-uncased`, `epochs=2`, `batch_size=4`, and `max_length=128`.
+
+### Classification Benchmark Ledger
+
+| Model | Split | Accuracy | Macro F1 | Artifact |
+| --- | --- | --- | --- | --- |
+| BERT NLI | validation | 0.444 | 0.4433 | `outputs/bert_nli` |
+| BERT NLI | test | 0.470 | 0.4702 | `outputs/bert_nli` |
+| BiLSTM baseline | validation | 0.333 | 0.1665 | `outputs/bilstm_baseline` |
+| BiLSTM baseline | test | 0.333 | 0.1665 | `outputs/bilstm_baseline` |
+| TextCNN baseline | validation | 0.332 | 0.1701 | `outputs/textcnn_baseline` |
+| TextCNN baseline | test | 0.330 | 0.1675 | `outputs/textcnn_baseline` |
+
+### Retrieval Benchmark Ledger
+
+| Backend | Reranking | Recall@1 | Recall@3 | Recall@5 | MRR | Avg latency |
+| --- | --- | --- | --- | --- | --- | --- |
+| FAISS dense retrieval | off | 0.746 | 0.925 | 0.949 | 0.8376 | 9.14 ms |
+| FAISS + BERT reranker | on | 0.746 | 0.933 | 0.954 | 0.8404 | 638.62 ms |
+
+### Robustness Summary
+
+| Model | Perturbation | Accuracy | Macro F1 |
+| --- | --- | --- | --- |
+| BERT NLI | typo | 0.417 | 0.3898 |
+| BERT NLI | paraphrase | 0.446 | 0.4452 |
+| BERT NLI | shuffle | 0.390 | 0.3493 |
+
+## Example Inference Output
+
+Excerpt from `results/example_inference.json`:
 
 ```json
 {
-  "premise": {"0": "...", "1": "..."},
-  "hypothesis": {"0": "...", "1": "..."},
-  "label": {"0": "entails", "1": "neutral"}
+  "query": "Several men are playing soccer outdoors.",
+  "top_k": 5,
+  "backend": "faiss",
+  "reranking_enabled": true,
+  "latency_ms": 458.99,
+  "results": [
+    {
+      "doc_id": "610",
+      "retrieval_score": 0.29005879163742065,
+      "normalized_retrieval_score": 0.38727615338450627,
+      "entailment_score": 0.8917219042778015,
+      "final_score": 0.7151658914651482
+    },
+    {
+      "doc_id": "76",
+      "retrieval_score": 0.29005879163742065,
+      "normalized_retrieval_score": 0.38727615338450627,
+      "entailment_score": 0.8917219042778015,
+      "final_score": 0.7151658914651482
+    }
+  ]
 }
 ```
 
-Labels such as `entails` and `contradicts` are normalized automatically.
+## Error Analysis and Robustness Findings
 
-## Quick Start
+The repository keeps error analysis and robustness as first-class outputs instead of afterthoughts.
+
+- `evaluation/error_analysis.py` categorizes failures into negation, lexical overlap, long-sequence, and other buckets.
+- `evaluation/robustness.py` measures accuracy and macro F1 under typo, paraphrase, and word-order perturbations.
+- [docs/error_cases.md](docs/error_cases.md) provides a template for turning raw failures into concrete case studies.
+
+## Key Findings
+
+- Retrieval and reranking are separated explicitly, which makes search quality and reasoning quality measurable instead of blended together.
+- The checked-in BERT run is meaningfully better than the lightweight baselines, but it is still only modestly above chance on this balanced 3-class task.
+- Both BiLSTM and TextCNN largely collapse toward the neutral class under the current training setup, so they are weak comparison points until re-tuned.
+- Reranking improves Recall@3, Recall@5, and MRR only slightly while increasing average latency from about 9 ms to about 639 ms.
+- Duplicate premises in the retrieval corpus can surface as repeated top results for free-form queries, as shown in the example inference artifact.
+
+## How to Run
 
 Install dependencies:
 
@@ -117,54 +143,70 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Train a BERT NLI model:
+Run baseline training when you have dataset splits:
 
 ```bash
-python train.py --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/bert_nli
+bash scripts/run_baselines.sh
 ```
 
-Run retrieval + reasoning inference:
+Run retrieval benchmarking on a corpus:
 
 ```bash
-python main.py --corpus-path data/train.json --query "A soccer game with multiple males playing." --checkpoint-dir outputs/bert_nli --top-k 5
+bash scripts/run_retrieval_eval.sh
 ```
 
-Run a baseline instead of BERT:
+Run a single query through the full pipeline:
 
 ```bash
-python train.py --model-type lstm --train-path data/train.json --val-path data/validation.json --output-dir outputs/lstm_baseline
+python main.py --corpus-path data/sample_nli.json --query "Several men are playing soccer outdoors."
 ```
 
-Start the optional API:
+Start the FastAPI service:
 
 ```bash
 uvicorn api.app:app --reload
 ```
 
-## What Changed from the Notebook
+Run tests:
 
-The original notebook bundled everything into one Colab workflow. This refactor separates concerns:
+```bash
+python -m unittest discover -s tests
+```
 
-- `data/`: loading, vocabulary building, and datasets
-- `models/`: BERT fine-tuning and baseline models
-- `retrieval/`: dense retrieval with FAISS and fallback indexing
-- `evaluation/`: metrics, error analysis, and robustness checks
-- `experiments/`: result logging and run summaries
+## Project Layout
 
-That makes the project easier to test, explain, and extend for ablations or demos.
+```text
+project/
+|-- api/
+|-- data/
+|   `-- sample_nli.json
+|-- docs/
+|-- evaluation/
+|-- experiments/
+|-- models/
+|-- results/
+|-- retrieval/
+|-- scripts/
+|-- tests/
+|-- utils/
+|-- main.py
+|-- pipeline.py
+|-- train.py
+`-- README.md
+```
 
-## Reproducibility
+## Limitations
 
-Training sets random seeds across Python, NumPy, and PyTorch. Each run writes:
+- The checked-in benchmark tables reflect one local run configuration; they should be regenerated whenever hyperparameters, datasets, or checkpoints change.
+- The retrieval benchmark uses NLI pairs as a proxy retrieval task; a dedicated retrieval-labeled corpus would support stronger claims.
+- The current score fusion uses a fixed weight rather than a learned calibration step.
+- Duplicate premises in the corpus can lead to repeated retrieval hits for free-form queries.
+- Confusion matrix images and richer qualitative failure galleries still need to be generated after full runs.
 
-- `metrics.json`
-- `error_analysis.json`
-- `robustness.json`
-- `run_summary.json`
-- `experiments/results/summary.csv`
+## Future Work
 
-## Notes
+- Add calibrated score fusion or a small learning-to-rank layer on top of retrieval and NLI scores.
+- Introduce a stronger cross-encoder reranker and compare it against the current classifier-based reranker.
+- Add confusion matrix visualizations and richer benchmark dashboards once dataset runs are available.
+- Extend API responses with trace metadata for retrieval backend, checkpoint version, and per-stage latency.
 
-- BERT and SentenceTransformers checkpoints may need to be downloaded the first time you run them.
-- In offline environments, the retrieval system can still fall back to TF-IDF if dense retrieval packages are unavailable.
-- The original notebook can remain as the coursework artifact; this repository is the engineered version for GitHub and portfolio use.

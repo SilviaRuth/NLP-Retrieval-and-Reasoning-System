@@ -1,0 +1,4 @@
+﻿model,perturbation,accuracy,macro_f1,status,notes
+bert_nli,typo,,,pending,Populate from outputs/*/robustness.json.
+bert_nli,paraphrase,,,pending,Populate from outputs/*/robustness.json.
+bert_nli,shuffle,,,pending,Populate from outputs/*/robustness.json.

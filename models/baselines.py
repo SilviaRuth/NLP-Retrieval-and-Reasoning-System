@@ -1,10 +1,10 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import torch
 import torch.nn as nn
 
 
-class LSTMNLIClassifier(nn.Module):
+class BiLSTMNLIClassifier(nn.Module):
     def __init__(
         self,
         vocab_size: int,
@@ -79,3 +79,7 @@ class CNNNLIClassifier(nn.Module):
             conv_features.append(pooled)
         features = torch.cat(conv_features, dim=1)
         return self.classifier(features)
+
+
+# Backward-compatible alias for older training commands and imports.
+LSTMNLIClassifier = BiLSTMNLIClassifier

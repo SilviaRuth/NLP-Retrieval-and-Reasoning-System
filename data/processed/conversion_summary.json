@@ -1,0 +1,101 @@
+[
+    {
+        "revision":  "r1",
+        "split":  "train",
+        "input_path":  "data\\archive\\train_r1.csv",
+        "output_path":  "data\\processed\\r1\\train.json",
+        "input_rows":  16946,
+        "kept_rows":  16941,
+        "removed_missing":  0,
+        "removed_unknown_label":  0,
+        "removed_duplicates":  5
+    },
+    {
+        "revision":  "r1",
+        "split":  "validation",
+        "input_path":  "data\\archive\\dev_r1.csv",
+        "output_path":  "data\\processed\\r1\\validation.json",
+        "input_rows":  1000,
+        "kept_rows":  1000,
+        "removed_missing":  0,
+        "removed_unknown_label":  0,
+        "removed_duplicates":  0
+    },
+    {
+        "revision":  "r1",
+        "split":  "test",
+        "input_path":  "data\\archive\\test_r1.csv",
+        "output_path":  "data\\processed\\r1\\test.json",
+        "input_rows":  1000,
+        "kept_rows":  1000,
+        "removed_missing":  0,
+        "removed_unknown_label":  0,
+        "removed_duplicates":  0
+    },
+    {
+        "revision":  "r2",
+        "split":  "train",
+        "input_path":  "data\\archive\\train_r2.csv",
+        "output_path":  "data\\processed\\r2\\train.json",
+        "input_rows":  45460,
+        "kept_rows":  45417,
+        "removed_missing":  0,
+        "removed_unknown_label":  0,
+        "removed_duplicates":  43
+    },
+    {
+        "revision":  "r2",
+        "split":  "validation",
+        "input_path":  "data\\archive\\dev_r2.csv",
+        "output_path":  "data\\processed\\r2\\validation.json",
+        "input_rows":  1000,
+        "kept_rows":  1000,
+        "removed_missing":  0,
+        "removed_unknown_label":  0,
+        "removed_duplicates":  0
+    },
+    {
+        "revision":  "r2",
+        "split":  "test",
+        "input_path":  "data\\archive\\test_r2.csv",
+        "output_path":  "data\\processed\\r2\\test.json",
+        "input_rows":  1000,
+        "kept_rows":  1000,
+        "removed_missing":  0,
+        "removed_unknown_label":  0,
+        "removed_duplicates":  0
+    },
+    {
+        "revision":  "r3",
+        "split":  "train",
+        "input_path":  "data\\archive\\train_r3.csv",
+        "output_path":  "data\\processed\\r3\\train.json",
+        "input_rows":  100459,
+        "kept_rows":  100320,
+        "removed_missing":  0,
+        "removed_unknown_label":  0,
+        "removed_duplicates":  139
+    },
+    {
+        "revision":  "r3",
+        "split":  "validation",
+        "input_path":  "data\\archive\\dev_r3.csv",
+        "output_path":  "data\\processed\\r3\\validation.json",
+        "input_rows":  1200,
+        "kept_rows":  1200,
+        "removed_missing":  0,
+        "removed_unknown_label":  0,
+        "removed_duplicates":  0
+    },
+    {
+        "revision":  "r3",
+        "split":  "test",
+        "input_path":  "data\\archive\\test_r3.csv",
+        "output_path":  "data\\processed\\r3\\test.json",
+        "input_rows":  1200,
+        "kept_rows":  1200,
+        "removed_missing":  0,
+        "removed_unknown_label":  0,
+        "removed_duplicates":  0
+    }
+]

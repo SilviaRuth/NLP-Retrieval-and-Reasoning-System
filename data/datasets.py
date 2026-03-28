@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
@@ -63,7 +63,9 @@ def _coerce_row(item: dict) -> NLIExample:
 
 def load_nli_dataset(path: str | Path) -> list[NLIExample]:
     path = Path(path)
-    with path.open("r", encoding="utf-8") as handle:
+    # Accept UTF-8 files with or without a BOM so datasets produced by
+    # PowerShell or spreadsheet export tooling still load cleanly.
+    with path.open("r", encoding="utf-8-sig") as handle:
         payload = json.load(handle)
 
     if isinstance(payload, list):

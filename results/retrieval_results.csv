@@ -1,0 +1,3 @@
+﻿backend,reranking,top_k,candidate_k,recall_at_1,recall_at_3,recall_at_5,mrr,avg_latency_ms,status,notes
+faiss,off,5,5,0.746,0.925,0.949,0.837616666666667,9.140573799639242,completed,Curated mirror of retrieval_metrics.csv.
+faiss,on,5,15,0.746,0.933,0.954,0.8403666666666669,638.6203116992547,completed,Curated mirror of retrieval_metrics.csv with reranking latency called out.

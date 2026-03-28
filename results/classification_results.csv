@@ -1,0 +1,7 @@
+﻿model,split,accuracy,macro_f1,artifact_dir,status,notes
+bert_nli,validation,0.444,0.4432820026688584,outputs/bert_nli,completed,"2-epoch bert-base-uncased run with batch_size=4 and max_length=128."
+bert_nli,test,0.47,0.470189414833523,outputs/bert_nli,completed,"Held-out test metrics from outputs/bert_nli/test_metrics.json."
+bilstm_baseline,validation,0.333,0.16654163540885222,outputs/bilstm_baseline,completed,"Collapsed toward the neutral class under the default baseline setup."
+bilstm_baseline,test,0.333,0.16654163540885222,outputs/bilstm_baseline,completed,"Held-out test metrics from outputs/bilstm_baseline/test_metrics.json."
+textcnn_baseline,validation,0.332,0.17010805329181014,outputs/textcnn_baseline,completed,"Nearly all predictions fell into the neutral class."
+textcnn_baseline,test,0.33,0.167495375508694,outputs/textcnn_baseline,completed,"Held-out test metrics from outputs/textcnn_baseline/test_metrics.json."
