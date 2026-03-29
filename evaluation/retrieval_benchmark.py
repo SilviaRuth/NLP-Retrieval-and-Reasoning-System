@@ -3,6 +3,7 @@
 import argparse
 import csv
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from pathlib import Path
 import time
 
@@ -18,6 +19,11 @@ from utils import ensure_dir, write_json
 
 @dataclass
 class RetrievalBenchmarkResult:
+    timestamp_utc: str
+    run_name: str
+    corpus_path: str
+    checkpoint_dir: str
+    embedding_model: str
     backend: str
     reranking: str
     top_k: int
@@ -38,6 +44,11 @@ def benchmark_pipeline(
     top_k: int,
     candidate_k: int | None,
     rerank: bool,
+    timestamp_utc: str,
+    run_name: str,
+    corpus_path: str,
+    checkpoint_dir: str,
+    embedding_model: str,
 ) -> RetrievalBenchmarkResult:
     ranked_ids: list[list[str]] = []
     latencies_ms: list[float] = []
@@ -53,6 +64,11 @@ def benchmark_pipeline(
         top_k * pipeline.candidate_multiplier if rerank and pipeline.reranking_enabled else top_k,
     )
     return RetrievalBenchmarkResult(
+        timestamp_utc=timestamp_utc,
+        run_name=run_name,
+        corpus_path=corpus_path,
+        checkpoint_dir=checkpoint_dir,
+        embedding_model=embedding_model,
         backend=pipeline.retriever.backend,
         reranking="on" if rerank and pipeline.reranking_enabled else "off",
         top_k=top_k,
@@ -64,6 +80,17 @@ def benchmark_pipeline(
         avg_latency_ms=sum(latencies_ms) / len(latencies_ms) if latencies_ms else 0.0,
         notes="Queries use the paired hypothesis to retrieve the matching premise.",
     )
+
+
+def write_csv(path: str | Path, rows: list[RetrievalBenchmarkResult]) -> None:
+    path = Path(path)
+    ensure_dir(path.parent)
+    fieldnames = list(asdict(rows[0]).keys())
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(asdict(row))
 
 
 def append_csv(path: str | Path, rows: list[RetrievalBenchmarkResult]) -> None:
@@ -91,11 +118,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--local-files-only", action="store_true")
     parser.add_argument("--output-json", default="results/retrieval_metrics.json")
     parser.add_argument("--output-csv", default="results/retrieval_metrics.csv")
+    parser.add_argument("--history-csv", default="experiments/results/retrieval_history.csv")
+    parser.add_argument("--run-name")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    timestamp_utc = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    run_name = args.run_name or (f"{Path(args.checkpoint_dir).name}_retrieval" if args.checkpoint_dir else "dense_retrieval")
     examples = load_nli_dataset(args.corpus_path)
     documents = [example.premise for example in examples]
     doc_ids = [str(index) for index in range(len(examples))]
@@ -135,6 +166,11 @@ def main() -> None:
             top_k=args.top_k,
             candidate_k=args.candidate_k,
             rerank=False,
+            timestamp_utc=timestamp_utc,
+            run_name=run_name,
+            corpus_path=args.corpus_path,
+            checkpoint_dir=args.checkpoint_dir or "",
+            embedding_model=args.embedding_model,
         )
     ]
     if pipeline.reranking_enabled:
@@ -146,12 +182,26 @@ def main() -> None:
                 top_k=args.top_k,
                 candidate_k=args.candidate_k,
                 rerank=True,
+                timestamp_utc=timestamp_utc,
+                run_name=run_name,
+                corpus_path=args.corpus_path,
+                checkpoint_dir=args.checkpoint_dir or "",
+                embedding_model=args.embedding_model,
             )
         )
 
-    payload = {"corpus_path": args.corpus_path, "rows": [asdict(row) for row in rows]}
+    payload = {
+        "timestamp_utc": timestamp_utc,
+        "run_name": run_name,
+        "corpus_path": args.corpus_path,
+        "checkpoint_dir": args.checkpoint_dir,
+        "embedding_model": args.embedding_model,
+        "rows": [asdict(row) for row in rows],
+    }
     write_json(args.output_json, payload)
-    append_csv(args.output_csv, rows)
+    write_csv(args.output_csv, rows)
+    if args.history_csv:
+        append_csv(args.history_csv, rows)
 
 
 if __name__ == "__main__":

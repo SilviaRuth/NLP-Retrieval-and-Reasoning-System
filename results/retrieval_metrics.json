@@ -1,18 +1,45 @@
-{
-  "corpus_path": "data/sample_nli.json",
+﻿{
+  "timestamp_utc": "20260329_185743",
+  "run_name": "bert_nli_tuned_retrieval",
+  "corpus_path": "data/test.json",
+  "checkpoint_dir": "outputs/bert_nli_tuned",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
   "rows": [
     {
+      "timestamp_utc": "20260329_185743",
+      "run_name": "bert_nli_tuned_retrieval",
+      "corpus_path": "data/test.json",
+      "checkpoint_dir": "outputs/bert_nli_tuned",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
       "backend": "faiss",
       "reranking": "off",
       "top_k": 5,
       "candidate_k": 5,
-      "recall_at_1": 1.0,
-      "recall_at_3": 1.0,
-      "recall_at_5": 1.0,
-      "mrr": 1.0,
-      "avg_latency_ms": 6.732746958732605,
+      "recall_at_1": 0.746,
+      "recall_at_3": 0.925,
+      "recall_at_5": 0.949,
+      "mrr": 0.837616666666667,
+      "avg_latency_ms": 9.140573799639242,
       "status": "completed",
       "notes": "Queries use the paired hypothesis to retrieve the matching premise."
+    },
+    {
+      "timestamp_utc": "20260329_185743",
+      "run_name": "bert_nli_tuned_retrieval",
+      "corpus_path": "data/test.json",
+      "checkpoint_dir": "outputs/bert_nli_tuned",
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "backend": "faiss",
+      "reranking": "on",
+      "top_k": 5,
+      "candidate_k": 15,
+      "recall_at_1": 0.746,
+      "recall_at_3": 0.933,
+      "recall_at_5": 0.954,
+      "mrr": 0.8403666666666669,
+      "avg_latency_ms": 638.6203116992547,
+      "status": "completed",
+      "notes": "Queries use the paired hypothesis to retrieve the matching premise; reranking helps slightly but adds heavy latency."
     }
   ]
 }

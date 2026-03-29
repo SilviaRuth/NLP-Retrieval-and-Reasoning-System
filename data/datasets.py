@@ -63,13 +63,14 @@ def _coerce_row(item: dict) -> NLIExample:
 
 def load_nli_dataset(path: str | Path) -> list[NLIExample]:
     path = Path(path)
-    # Accept UTF-8 files with or without a BOM so datasets produced by
-    # PowerShell or spreadsheet export tooling still load cleanly.
     with path.open("r", encoding="utf-8-sig") as handle:
         payload = json.load(handle)
 
     if isinstance(payload, list):
         return [_coerce_row(item) for item in payload]
+
+    if isinstance(payload, dict) and isinstance(payload.get("examples"), list):
+        return [_coerce_row(item) for item in payload["examples"]]
 
     required = {"premise", "hypothesis", "label"}
     if isinstance(payload, dict) and required.issubset(payload.keys()):
@@ -78,8 +79,6 @@ def load_nli_dataset(path: str | Path) -> list[NLIExample]:
         label = payload["label"]
         if isinstance(premise, dict) and isinstance(hypothesis, dict) and isinstance(label, dict):
             rows: list[NLIExample] = []
-            # Support the original notebook export format where each field is stored
-            # as a column-oriented dict keyed by row index.
             for key in premise:
                 rows.append(
                     NLIExample(
@@ -132,8 +131,6 @@ class TokenPairDataset(Dataset):
         return len(self.examples)
 
     def _encode_pair(self, premise: str, hypothesis: str) -> tuple[list[int], list[int]]:
-        # Baseline models do not use a pretrained tokenizer, so we manually mimic
-        # the standard pair layout: [CLS] premise [SEP] hypothesis [SEP].
         tokens = ["[CLS]"]
         tokens.extend(simple_tokenize(premise.lower()))
         tokens.append("[SEP]")
@@ -178,7 +175,6 @@ class TransformerNLIDataset(Dataset):
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
         example = self.examples[index]
-        # Hugging Face tokenizers already handle pair packing, truncation, and masks.
         encoded = self.tokenizer(
             example.premise,
             example.hypothesis,

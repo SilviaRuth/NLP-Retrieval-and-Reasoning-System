@@ -1,8 +1,9 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from collections import Counter
 
 from data.datasets import NLIExample
+from evaluation.hard_set import extract_error_tags
 from utils.text import contains_negation, lexical_overlap_ratio, simple_tokenize
 
 
@@ -24,26 +25,36 @@ def analyze_errors(
     y_true: list[int],
     y_pred: list[int],
     id_to_label: dict[int, str],
+    source_split: str = "validation",
 ) -> dict:
     records = []
     categories = Counter()
-    for example, gold, pred in zip(examples, y_true, y_pred):
+    tag_counts = Counter()
+    for index, (example, gold, pred) in enumerate(zip(examples, y_true, y_pred)):
         if gold == pred:
             continue
         category = categorize_error(example)
+        tags = extract_error_tags(example.premise, example.hypothesis, category)
         categories[category] += 1
+        tag_counts.update(tags)
         records.append(
             {
+                "example_id": index,
                 "premise": example.premise,
                 "hypothesis": example.hypothesis,
                 "gold": id_to_label[gold],
+                "gold_label": id_to_label[gold],
                 "predicted": id_to_label[pred],
+                "predicted_label": id_to_label[pred],
                 "category": category,
+                "error_tags": tags,
+                "source_split": source_split,
             }
         )
 
     return {
         "total_errors": len(records),
         "category_counts": dict(categories),
+        "tag_counts": dict(tag_counts),
         "records": records,
     }

@@ -18,8 +18,13 @@ except ImportError:  # pragma: no cover
 @dataclass
 class BertNLIConfig:
     model_name: str = "bert-base-uncased"
+    train_path: str | None = None
+    val_path: str | None = None
+    test_path: str | None = None
+    output_dir: str | None = None
     max_length: int = 256
     batch_size: int = 16
+    effective_batch_size: int | None = None
     epochs: int = 3
     learning_rate: float = 2e-5
     weight_decay: float = 0.01
@@ -28,6 +33,9 @@ class BertNLIConfig:
     warmup_steps: int | None = None
     max_grad_norm: float = 1.0
     early_stopping_patience: int = 2
+    seed: int = 42
+    augmentation_enabled: bool = False
+    augmentation_path: str | None = None
     local_files_only: bool = False
 
 

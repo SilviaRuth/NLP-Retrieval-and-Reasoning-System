@@ -1,0 +1,21 @@
+﻿{
+  "train_path": "data/train.json",
+  "val_path": "data/validation.json",
+  "test_path": "data/test.json",
+  "output_dir": "outputs/bert_run3",
+  "model_type": "bert",
+  "model_name": "bert-base-uncased",
+  "max_length": 256,
+  "batch_size": 4,
+  "gradient_accumulation_steps": 4,
+  "epochs": 5,
+  "learning_rate": 1e-05,
+  "weight_decay": 0.01,
+  "warmup_ratio": 0.1,
+  "max_grad_norm": 1.0,
+  "early_stopping_patience": 1,
+  "seed": 42,
+  "augmentation_enabled": true,
+  "augmentation_path": "data/generated/targeted_nli_run3.json",
+  "local_files_only": false
+}

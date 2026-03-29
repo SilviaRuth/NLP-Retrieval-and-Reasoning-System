@@ -1,11 +1,11 @@
 ﻿# NLP Retrieval and Reasoning System
 
-This repository turns an NLI coursework notebook into a modular applied NLP system that is easier to benchmark, explain, and deploy. The project centers on a two-stage pipeline:
+This repository turns an NLI coursework notebook into a modular retrieval-and-reasoning system that is easier to benchmark, explain, and deploy. The project centers on a two-stage pipeline:
 
 1. Stage 1 dense retrieval with SentenceTransformers + FAISS, with TF-IDF fallback.
 2. Stage 2 NLI reranking with a BERT classifier that scores entailment against each retrieved candidate.
 
-The result is a cleaner portfolio story than a plain classifier demo: we can compare model families, evaluate retrieval quality, inspect reranking behavior, and serve the whole pipeline through FastAPI.
+The project now treats evaluation as a multi-signal decision rather than a single headline number. A run is considered strong only if it performs well on clean validation/test splits, hard reasoning cases, robustness checks, and reproducibility artifacts.
 
 ## Architecture Diagram
 
@@ -34,36 +34,40 @@ flowchart LR
 - `SentenceTransformers + FAISS`: dense retriever.
 - `TF-IDF`: offline-safe retrieval fallback.
 
-## Retrieval and Reasoning Pipeline
+## Evaluation Policy
 
-The repository now makes the reranking story explicit in both code and outputs.
+A candidate run should only be treated as improved if it:
 
-- Stage 1 retrieves a candidate pool with dense retrieval or TF-IDF fallback.
-- Stage 2 scores each candidate with the NLI classifier using the query as hypothesis.
-- The pipeline normalizes retrieval scores, combines them with entailment probability, and returns a score breakdown for each result.
-- CLI and API responses now expose `retrieval_score`, `normalized_retrieval_score`, `entailment_score`, `final_score`, and `score_breakdown`.
+- improves clean validation macro F1,
+- improves or at least does not materially regress on the hard set,
+- does not materially collapse on typo and shuffle robustness,
+- and writes a reproducible artifact set including config, metrics, robustness, and run summary files.
 
-## Experimental Setup
+The hard-set benchmark is now first-class and focuses on the dominant failure buckets identified from earlier runs:
 
-The intended benchmark package is documented in [docs/benchmark.md](docs/benchmark.md).
+- `long_sequence`
+- `negation`
+- `numeric_date` for numeric, date, and temporal reasoning heuristics
 
-Core runs:
+## Benchmark Artifacts
 
-- BERT vs BiLSTM vs TextCNN classification.
-- Dense retrieval vs TF-IDF fallback.
-- Reranking off vs reranking on.
-- Robustness under typo, paraphrase, and shuffle noise.
-- Latency measurement for retrieval and full pipeline inference.
+Current benchmark snapshots live in:
 
-Benchmark ledgers are checked in under [results/classification_results.csv](results/classification_results.csv), [results/retrieval_metrics.csv](results/retrieval_metrics.csv), and [results/robustness_summary.csv](results/robustness_summary.csv).
+- [results/classification_results.csv](results/classification_results.csv)
+- [results/retrieval_metrics.csv](results/retrieval_metrics.csv)
+- [results/robustness_summary.csv](results/robustness_summary.csv)
+- [data/eval/hard_set.json](data/eval/hard_set.json)
+
+Append-only experiment history lives in:
+
+- `experiments/results/summary.csv`
+- `experiments/results/retrieval_history.csv`
 
 ## Benchmark Results
 
-The repository now includes local JSON splits under `data/` and run artifacts under `outputs/`. The tables below reflect the checked-in outputs from the current local run, not placeholder values.
+The tables below reflect the fully exported baseline runs currently checked into the repo.
 
-The current BERT checkpoint was trained with `bert-base-uncased`, `epochs=2`, `batch_size=4`, and `max_length=128`.
-
-### Classification Benchmark Ledger
+### Classification Benchmarks
 
 | Model | Split | Accuracy | Macro F1 | Artifact |
 | --- | --- | --- | --- | --- |
@@ -88,6 +92,128 @@ The current BERT checkpoint was trained with `bert-base-uncased`, `epochs=2`, `b
 | BERT NLI | typo | 0.417 | 0.3898 |
 | BERT NLI | paraphrase | 0.446 | 0.4452 |
 | BERT NLI | shuffle | 0.390 | 0.3493 |
+
+### Training Progress
+
+| Run | Main setup | Best validation accuracy | Best validation macro F1 | Notes |
+| --- | --- | --- | --- | --- |
+| 1st training | `bert-base-uncased`, `epochs=2`, `batch_size=4`, `max_length=128` | 0.444 | 0.4433 | Fully exported in `outputs/bert_nli`. |
+| 2nd training | `bert-base-uncased`, `epochs=5`, `batch_size=4`, `max_length=256`, accumulation, warmup, clipping, patience=2 | 0.471 | 0.4681 | Best score appeared at epoch 5 in the training log; only checkpoint and config were exported. |
+
+Compared with the 1st training, the 2nd BERT run improved validation accuracy by `+0.027` and validation macro F1 by `+0.0248`. The gain is real but still modest for a balanced 3-class NLI task, and the main remaining issues are long-context reasoning, negation handling, and weak robustness under shuffle and typo noise.
+
+## Hard-Set Workflow
+
+Build the curated hard set from the latest exported error analysis:
+
+```bash
+python scripts/build_hard_set.py
+```
+
+Evaluate a checkpoint on the hard set:
+
+```bash
+python scripts/eval_hard_set.py --checkpoint outputs/bert_nli_tuned
+```
+
+This writes `hard_set_metrics.json` under the checkpoint directory by default and reports:
+
+- hard-set accuracy
+- hard-set macro F1
+- per-bucket results for `negation`, `long_sequence`, and `numeric_date`
+
+## Run Comparison and Promotion Gate
+
+Compare two runs with the rule-based promotion gate:
+
+```bash
+python scripts/compare_runs.py --base outputs/bert_nli --candidate outputs/bert_nli_tuned
+```
+
+Summarize a single run and optionally compare it with the baseline:
+
+```bash
+python scripts/summarize_run.py --run outputs/bert_nli_tuned
+```
+
+The comparison workflow checks:
+
+- validation accuracy and macro F1
+- test accuracy and macro F1
+- typo robustness
+- paraphrase robustness
+- shuffle robustness
+- hard-set performance
+
+## Targeted Augmentation
+
+Generate targeted synthetic NLI data for the main failure buckets:
+
+```bash
+python scripts/generate_targeted_nli_data.py --negation 500 --numeric 300 --temporal 300 --long_reasoning 400
+```
+
+The script writes a separate augmentation file and summary under `data/generated/`. Training can then include it with `augmentation_path` in the run config.
+
+## Run 3 Config
+
+A dedicated run-3 config now lives at [configs/bert_run3.json](configs/bert_run3.json).
+
+Recommended run-3 workflow:
+
+```bash
+python scripts/build_hard_set.py
+python scripts/generate_targeted_nli_data.py --negation 500 --numeric 300 --temporal 300 --long_reasoning 400 --output-path data/generated/targeted_nli_run3.json
+python train.py --config-path configs/bert_run3.json
+python scripts/eval_hard_set.py --checkpoint outputs/bert_run3
+python scripts/compare_runs.py --base outputs/bert_nli --candidate outputs/bert_run3
+python scripts/summarize_run.py --run outputs/bert_run3
+```
+
+The training command now supports config-driven runs and writes:
+
+- `training_config.json`
+- `metrics.json`
+- `error_analysis.json`
+- `robustness.json`
+- `test_metrics.json`
+- `best_run_summary.json`
+- `run_status.json`
+- `augmentation_summary.json` when augmentation is enabled
+
+## Retrieval and Full Pipeline Commands
+
+Run retrieval benchmarking without reranking:
+
+```bash
+python -m evaluation.retrieval_benchmark --corpus-path data/test.json --output-json results/retrieval_metrics.json --output-csv results/retrieval_metrics.csv
+```
+
+This overwrites `results/retrieval_metrics.csv` with the current snapshot and appends the same rows to `experiments/results/retrieval_history.csv`.
+
+Run retrieval benchmarking with the BERT reranker:
+
+```bash
+python -m evaluation.retrieval_benchmark --corpus-path data/test.json --checkpoint-dir outputs/bert_nli_tuned --output-json results/retrieval_metrics.json --output-csv results/retrieval_metrics.csv
+```
+
+Run one query through the full pipeline:
+
+```bash
+python main.py --corpus-path data/test.json --query "Several men are playing soccer outdoors." --checkpoint-dir outputs/bert_nli_tuned --output-path results/example_inference.json
+```
+
+Start the API:
+
+```bash
+uvicorn api.app:app --reload
+```
+
+Run tests:
+
+```bash
+python -m unittest discover -s tests
+```
 
 ## Example Inference Output
 
@@ -119,130 +245,23 @@ Excerpt from `results/example_inference.json`:
 }
 ```
 
-## Error Analysis and Robustness Findings
-
-The repository keeps error analysis and robustness as first-class outputs instead of afterthoughts.
-
-- `evaluation/error_analysis.py` categorizes failures into negation, lexical overlap, long-sequence, and other buckets.
-- `evaluation/robustness.py` measures accuracy and macro F1 under typo, paraphrase, and word-order perturbations.
-- [docs/error_cases.md](docs/error_cases.md) provides a template for turning raw failures into concrete case studies.
-
 ## Key Findings
 
 - Retrieval and reranking are separated explicitly, which makes search quality and reasoning quality measurable instead of blended together.
-- The checked-in BERT run is meaningfully better than the lightweight baselines, but it is still only modestly above chance on this balanced 3-class task.
+- The 2nd BERT training improves on the 1st validation result, but the gain is still modest on this balanced 3-class task.
 - Both BiLSTM and TextCNN largely collapse toward the neutral class under the current training setup, so they are weak comparison points until re-tuned.
-- Reranking improves Recall@3, Recall@5, and MRR only slightly while increasing average latency from about 9 ms to about 639 ms.
-- Duplicate premises in the retrieval corpus can surface as repeated top results for free-form queries, as shown in the example inference artifact.
-
-## How to Run
-
-### 1. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-
-### 2. Train the main BERT model
-
-Recommended command:
-
-```bash
-python train.py --model-type bert --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/bert_nli_tuned --epochs 5 --batch-size 4 --max-length 256
-```
-
-What this now does by default:
-- Uses `bert-base-uncased`
-- Uses gradient accumulation for a larger effective batch size
-- Uses linear warmup and gradient clipping
-- Uses early stopping based on validation macro F1
-- Writes metrics, error analysis, robustness, and test results to `outputs/bert_nli_tuned`
-
-Useful optional flags:
-
-```bash
-python train.py --model-type bert --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/bert_custom --epochs 5 --batch-size 4 --max-length 256 --learning-rate 2e-5 --gradient-accumulation-steps 4 --warmup-ratio 0.1 --early-stopping-patience 2
-```
-
-### 3. Train all comparison models
-
-If you want BERT, BiLSTM, and TextCNN together, run the helper script:
-
-```bash
-bash scripts/run_baselines.sh
-```
-
-That script reads:
-- `TRAIN_PATH` default: `data/train.json`
-- `VAL_PATH` default: `data/validation.json`
-- `TEST_PATH` default: `data/test.json`
-- `OUTPUT_ROOT` default: `outputs`
-
-If you prefer direct commands instead of the Bash helper:
-
-```bash
-python train.py --model-type bert --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/bert_nli
-python train.py --model-type bilstm --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/bilstm_baseline
-python train.py --model-type cnn --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/textcnn_baseline
-```
-
-### 4. Run retrieval benchmarking
-
-Without reranking:
-
-```bash
-python -m evaluation.retrieval_benchmark --corpus-path data/test.json --output-json results/retrieval_metrics.json --output-csv results/retrieval_metrics.csv
-```
-
-With the trained BERT reranker:
-
-```bash
-python -m evaluation.retrieval_benchmark --corpus-path data/test.json --checkpoint-dir outputs/bert_nli_tuned --output-json results/retrieval_metrics.json --output-csv results/retrieval_metrics.csv
-```
-
-You can also use the helper script:
-
-```bash
-bash scripts/run_retrieval_eval.sh
-```
-
-If you use the script, set `CHECKPOINT_DIR` when you want reranking enabled.
-
-### 5. Run one query through the full pipeline
-
-Dense retrieval only:
-
-```bash
-python main.py --corpus-path data/test.json --query "Several men are playing soccer outdoors." --disable-reranking --output-path results/example_inference.json
-```
-
-Dense retrieval plus BERT reranking:
-
-```bash
-python main.py --corpus-path data/test.json --query "Several men are playing soccer outdoors." --checkpoint-dir outputs/bert_nli_tuned --output-path results/example_inference.json
-```
-
-This writes a JSON response with `retrieval_score`, `normalized_retrieval_score`, `entailment_score`, `final_score`, and per-stage score breakdowns.
-
-### 6. Start the API
-
-```bash
-uvicorn api.app:app --reload
-```
-
-### 7. Run tests
-
-```bash
-python -m unittest discover -s tests
-```
+- Long-context reasoning, negation, and numeric/date reasoning are now tracked explicitly through the hard-set workflow.
+- Reranking improves Recall@3, Recall@5, and MRR only slightly while increasing average latency substantially.
 
 ## Project Layout
 
 ```text
 project/
 |-- api/
+|-- configs/
 |-- data/
+|   |-- eval/
+|   |-- generated/
 |   `-- sample_nli.json
 |-- docs/
 |-- evaluation/
@@ -261,17 +280,14 @@ project/
 
 ## Limitations
 
-- The checked-in benchmark tables reflect one local run configuration; they should be regenerated whenever hyperparameters, datasets, or checkpoints change.
+- The checked-in benchmark tables reflect one local run configuration and should be regenerated whenever datasets, configs, or checkpoints change.
 - The retrieval benchmark uses NLI pairs as a proxy retrieval task; a dedicated retrieval-labeled corpus would support stronger claims.
 - The current score fusion uses a fixed weight rather than a learned calibration step.
-- Duplicate premises in the corpus can lead to repeated retrieval hits for free-form queries.
-- Confusion matrix images and richer qualitative failure galleries still need to be generated after full runs.
+- The hard set is seeded from exported failure analysis plus heuristics, so it should be reviewed and expanded over time.
 
 ## Future Work
 
-- Add calibrated score fusion or a small learning-to-rank layer on top of retrieval and NLI scores.
+- Increase hard-set coverage with more reviewed numeric/date and temporal reasoning cases.
 - Introduce a stronger cross-encoder reranker and compare it against the current classifier-based reranker.
-- Add confusion matrix visualizations and richer benchmark dashboards once dataset runs are available.
+- Add confusion matrix visualizations and richer benchmark dashboards once refreshed runs are available.
 - Extend API responses with trace metadata for retrieval backend, checkpoint version, and per-stage latency.
-
-
