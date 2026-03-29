@@ -4,53 +4,19 @@
   "candidate_k": null,
   "backend": "faiss",
   "reranking_enabled": true,
-  "latency_ms": 458.99,
+  "latency_ms": 94.61,
   "results": [
-    {
-      "doc_id": "610",
-      "text": "Kevin Sloan is a retired American soccer player who played professionally in the American Soccer League, American Professional Soccer League and Major Indoor Soccer League. He has also coached professionally and is currently the head coach of the Neumann College men's soccer team.",
-      "retrieval_score": 0.29005879163742065,
-      "entailment_score": 0.8917219042778015,
-      "normalized_retrieval_score": 0.38727615338450627,
-      "final_score": 0.7151658914651482,
-      "reranking_enabled": true,
-      "score_breakdown": {
-        "retrieval": 0.1355466536845772,
-        "reranker": 0.579619237780571
-      },
-      "metadata": {
-        "hypothesis": "When Kevin Sloan retired from professional soccer he planned to eventually coach the Nuemann College men's soccer team.",
-        "label": "neutral"
-      }
-    },
-    {
-      "doc_id": "76",
-      "text": "Kevin Sloan is a retired American soccer player who played professionally in the American Soccer League, American Professional Soccer League and Major Indoor Soccer League. He has also coached professionally and is currently the head coach of the Neumann College men's soccer team.",
-      "retrieval_score": 0.29005879163742065,
-      "entailment_score": 0.8917219042778015,
-      "normalized_retrieval_score": 0.38727615338450627,
-      "final_score": 0.7151658914651482,
-      "reranking_enabled": true,
-      "score_breakdown": {
-        "retrieval": 0.1355466536845772,
-        "reranker": 0.579619237780571
-      },
-      "metadata": {
-        "hypothesis": "Kevin Sloan played in less than 5 leagues",
-        "label": "entailment"
-      }
-    },
     {
       "doc_id": "357",
       "text": "Polo (Persian: چوگان \"chogān\") is a team sport played on horseback. The objective is to score goals against an opposing team. Players score by driving a small white plastic or wooden ball into the opposing team's goal using a long-handled mallet. The traditional sport of polo is played on a grass field up to 300 by . Each polo team consists of four riders and their mounts.",
-      "retrieval_score": 0.35532498359680176,
-      "entailment_score": 0.013856275007128716,
+      "retrieval_score": 0.35532501339912415,
+      "entailment_score": 0.0007804185734130442,
       "normalized_retrieval_score": 1.0,
-      "final_score": 0.35900657875463365,
+      "final_score": 0.3505072720727185,
       "reranking_enabled": true,
       "score_breakdown": {
         "retrieval": 0.35,
-        "reranker": 0.009006578754633666
+        "reranker": 0.0005072720727184787
       },
       "metadata": {
         "hypothesis": "Only Arabian horses are used to play polo.",
@@ -60,14 +26,14 @@
     {
       "doc_id": "242",
       "text": "Manchester City Football Club is a football club in Manchester, England. Founded in 1880 as St. Mark's (West Gorton), they became Ardwick Association Football Club in 1887 and Manchester City in 1894. The club moved to the City of Manchester Stadium in 2003, having played at Maine Road since 1923.",
-      "retrieval_score": 0.3285568654537201,
-      "entailment_score": 0.02353798970580101,
-      "normalized_retrieval_score": 0.748698923241997,
-      "final_score": 0.27734431644346963,
+      "retrieval_score": 0.32855677604675293,
+      "entailment_score": 0.0003931823594029993,
+      "normalized_retrieval_score": 0.7486979447181531,
+      "final_score": 0.2622998491849655,
       "reranking_enabled": true,
       "score_breakdown": {
-        "retrieval": 0.26204462313469895,
-        "reranker": 0.015299693308770658
+        "retrieval": 0.26204428065135354,
+        "reranker": 0.00025556853361194957
       },
       "metadata": {
         "hypothesis": "The football club is in New Manchester.",
@@ -75,16 +41,50 @@
       }
     },
     {
-      "doc_id": "536",
-      "text": "Manchester United Football Club is a professional football club based in Old Trafford, Greater Manchester, England, that competes in the Premier League, the top flight of English football. Nicknamed \"the Red Devils\", the club was founded as Newton Heath LYR Football Club in 1878, changed its name to Manchester United in 1902 and moved to its current stadium, Old Trafford, in 1910.",
-      "retrieval_score": 0.315091073513031,
-      "entailment_score": 0.009512742981314659,
-      "normalized_retrieval_score": 0.6222810706306805,
-      "final_score": 0.22398165765859268,
+      "doc_id": "610",
+      "text": "Kevin Sloan is a retired American soccer player who played professionally in the American Soccer League, American Professional Soccer League and Major Indoor Soccer League. He has also coached professionally and is currently the head coach of the Neumann College men's soccer team.",
+      "retrieval_score": 0.29005903005599976,
+      "entailment_score": 0.14458107948303223,
+      "normalized_retrieval_score": 0.3872784547517079,
+      "final_score": 0.2295251608270687,
       "reranking_enabled": true,
       "score_breakdown": {
-        "retrieval": 0.21779837472073815,
-        "reranker": 0.006183282937854528
+        "retrieval": 0.13554745916309777,
+        "reranker": 0.09397770166397094
+      },
+      "metadata": {
+        "hypothesis": "When Kevin Sloan retired from professional soccer he planned to eventually coach the Nuemann College men's soccer team.",
+        "label": "neutral"
+      }
+    },
+    {
+      "doc_id": "76",
+      "text": "Kevin Sloan is a retired American soccer player who played professionally in the American Soccer League, American Professional Soccer League and Major Indoor Soccer League. He has also coached professionally and is currently the head coach of the Neumann College men's soccer team.",
+      "retrieval_score": 0.29005903005599976,
+      "entailment_score": 0.14458107948303223,
+      "normalized_retrieval_score": 0.3872784547517079,
+      "final_score": 0.2295251608270687,
+      "reranking_enabled": true,
+      "score_breakdown": {
+        "retrieval": 0.13554745916309777,
+        "reranker": 0.09397770166397094
+      },
+      "metadata": {
+        "hypothesis": "Kevin Sloan played in less than 5 leagues",
+        "label": "entailment"
+      }
+    },
+    {
+      "doc_id": "536",
+      "text": "Manchester United Football Club is a professional football club based in Old Trafford, Greater Manchester, England, that competes in the Premier League, the top flight of English football. Nicknamed \"the Red Devils\", the club was founded as Newton Heath LYR Football Club in 1878, changed its name to Manchester United in 1902 and moved to its current stadium, Old Trafford, in 1910.",
+      "retrieval_score": 0.3150911033153534,
+      "entailment_score": 0.00026937140501104295,
+      "normalized_retrieval_score": 0.6222812819918095,
+      "final_score": 0.2179735401103905,
+      "reranking_enabled": true,
+      "score_breakdown": {
+        "retrieval": 0.21779844869713333,
+        "reranker": 0.00017509141325717793
       },
       "metadata": {
         "hypothesis": "Manchester United played in Old Trafford in 1902.",

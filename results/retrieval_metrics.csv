@@ -1,3 +1,7 @@
 ﻿backend,reranking,top_k,candidate_k,recall_at_1,recall_at_3,recall_at_5,mrr,avg_latency_ms,status,notes
 faiss,off,5,5,0.746,0.925,0.949,0.837616666666667,9.140573799639242,completed,Queries use the paired hypothesis to retrieve the matching premise.
 faiss,on,5,15,0.746,0.933,0.954,0.8403666666666669,638.6203116992547,completed,Queries use the paired hypothesis to retrieve the matching premise; reranking helps slightly but adds heavy latency.
+faiss,off,5,5,0.747,0.925,0.949,0.8381166666666666,4.740127958357334,completed,Queries use the paired hypothesis to retrieve the matching premise.
+faiss,off,5,5,0.747,0.925,0.949,0.8381166666666666,5.353748552501202,completed,Queries use the paired hypothesis to retrieve the matching premise.
+faiss,on,5,15,0.724,0.921,0.953,0.8228166666666668,21.19432882964611,completed,Queries use the paired hypothesis to retrieve the matching premise.
+faiss,off,5,5,1.0,1.0,1.0,1.0,6.732746958732605,completed,Queries use the paired hypothesis to retrieve the matching premise.
