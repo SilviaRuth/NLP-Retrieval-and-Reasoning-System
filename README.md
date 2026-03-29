@@ -137,37 +137,101 @@ The repository keeps error analysis and robustness as first-class outputs instea
 
 ## How to Run
 
-Install dependencies:
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run baseline training when you have dataset splits:
+
+### 2. Train the main BERT model
+
+Recommended command:
+
+```bash
+python train.py --model-type bert --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/bert_nli_tuned --epochs 5 --batch-size 4 --max-length 256
+```
+
+What this now does by default:
+- Uses `bert-base-uncased`
+- Uses gradient accumulation for a larger effective batch size
+- Uses linear warmup and gradient clipping
+- Uses early stopping based on validation macro F1
+- Writes metrics, error analysis, robustness, and test results to `outputs/bert_nli_tuned`
+
+Useful optional flags:
+
+```bash
+python train.py --model-type bert --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/bert_custom --epochs 5 --batch-size 4 --max-length 256 --learning-rate 2e-5 --gradient-accumulation-steps 4 --warmup-ratio 0.1 --early-stopping-patience 2
+```
+
+### 3. Train all comparison models
+
+If you want BERT, BiLSTM, and TextCNN together, run the helper script:
 
 ```bash
 bash scripts/run_baselines.sh
 ```
 
-Run retrieval benchmarking on a corpus:
+That script reads:
+- `TRAIN_PATH` default: `data/train.json`
+- `VAL_PATH` default: `data/validation.json`
+- `TEST_PATH` default: `data/test.json`
+- `OUTPUT_ROOT` default: `outputs`
+
+If you prefer direct commands instead of the Bash helper:
+
+```bash
+python train.py --model-type bert --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/bert_nli
+python train.py --model-type bilstm --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/bilstm_baseline
+python train.py --model-type cnn --train-path data/train.json --val-path data/validation.json --test-path data/test.json --output-dir outputs/textcnn_baseline
+```
+
+### 4. Run retrieval benchmarking
+
+Without reranking:
+
+```bash
+python -m evaluation.retrieval_benchmark --corpus-path data/test.json --output-json results/retrieval_metrics.json --output-csv results/retrieval_metrics.csv
+```
+
+With the trained BERT reranker:
+
+```bash
+python -m evaluation.retrieval_benchmark --corpus-path data/test.json --checkpoint-dir outputs/bert_nli_tuned --output-json results/retrieval_metrics.json --output-csv results/retrieval_metrics.csv
+```
+
+You can also use the helper script:
 
 ```bash
 bash scripts/run_retrieval_eval.sh
 ```
 
-Run a single query through the full pipeline:
+If you use the script, set `CHECKPOINT_DIR` when you want reranking enabled.
+
+### 5. Run one query through the full pipeline
+
+Dense retrieval only:
 
 ```bash
-python main.py --corpus-path data/sample_nli.json --query "Several men are playing soccer outdoors."
+python main.py --corpus-path data/test.json --query "Several men are playing soccer outdoors." --disable-reranking --output-path results/example_inference.json
 ```
 
-Start the FastAPI service:
+Dense retrieval plus BERT reranking:
+
+```bash
+python main.py --corpus-path data/test.json --query "Several men are playing soccer outdoors." --checkpoint-dir outputs/bert_nli_tuned --output-path results/example_inference.json
+```
+
+This writes a JSON response with `retrieval_score`, `normalized_retrieval_score`, `entailment_score`, `final_score`, and per-stage score breakdowns.
+
+### 6. Start the API
 
 ```bash
 uvicorn api.app:app --reload
 ```
 
-Run tests:
+### 7. Run tests
 
 ```bash
 python -m unittest discover -s tests
@@ -209,4 +273,5 @@ project/
 - Introduce a stronger cross-encoder reranker and compare it against the current classifier-based reranker.
 - Add confusion matrix visualizations and richer benchmark dashboards once dataset runs are available.
 - Extend API responses with trace metadata for retrieval backend, checkpoint version, and per-stage latency.
+
 

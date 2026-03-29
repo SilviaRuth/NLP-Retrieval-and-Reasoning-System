@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -23,6 +23,11 @@ class BertNLIConfig:
     epochs: int = 3
     learning_rate: float = 2e-5
     weight_decay: float = 0.01
+    gradient_accumulation_steps: int = 4
+    warmup_ratio: float = 0.1
+    warmup_steps: int | None = None
+    max_grad_norm: float = 1.0
+    early_stopping_patience: int = 2
     local_files_only: bool = False
 
 

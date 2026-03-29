@@ -2,11 +2,13 @@
 
 import argparse
 import copy
+import math
 from dataclasses import asdict
 
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -33,13 +35,34 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-name", default="bert-base-uncased")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--epochs", type=int, default=3)
-    parser.add_argument("--learning-rate", type=float, default=2e-5)
+    parser.add_argument("--learning-rate", type=float)
     parser.add_argument("--weight-decay", type=float, default=0.01)
     parser.add_argument("--max-length", type=int, default=256)
+    parser.add_argument("--gradient-accumulation-steps", type=int)
+    parser.add_argument("--warmup-ratio", type=float, default=0.1)
+    parser.add_argument("--warmup-steps", type=int)
+    parser.add_argument("--max-grad-norm", type=float, default=1.0)
+    parser.add_argument("--early-stopping-patience", type=int, default=2)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--local-files-only", action="store_true")
     parser.add_argument("--min-freq", type=int, default=2)
     return parser.parse_args()
+
+
+def resolve_training_defaults(args: argparse.Namespace) -> argparse.Namespace:
+    if args.learning_rate is None:
+        args.learning_rate = 2e-5 if args.model_type == "bert" else 1e-3
+    if args.gradient_accumulation_steps is None:
+        args.gradient_accumulation_steps = 4 if args.model_type == "bert" else 1
+    if args.gradient_accumulation_steps < 1:
+        raise ValueError("gradient_accumulation_steps must be at least 1")
+    if args.warmup_steps is not None and args.warmup_steps < 0:
+        raise ValueError("warmup_steps must be non-negative")
+    if not 0.0 <= args.warmup_ratio < 1.0:
+        raise ValueError("warmup_ratio must be in the range [0.0, 1.0)")
+    if args.early_stopping_patience < 1:
+        raise ValueError("early_stopping_patience must be at least 1")
+    return args
 
 
 def move_batch_to_device(batch: dict[str, torch.Tensor], device: torch.device) -> dict[str, torch.Tensor]:
@@ -59,16 +82,51 @@ def forward_with_loss(model, batch: dict[str, torch.Tensor], criterion):
     return loss, logits, labels
 
 
-def train_epoch(model, dataloader, optimizer, criterion, device: torch.device) -> float:
+def build_linear_warmup_scheduler(optimizer, total_steps: int, warmup_steps: int) -> LambdaLR | None:
+    if total_steps <= 0:
+        return None
+
+    capped_warmup_steps = min(warmup_steps, total_steps)
+
+    def lr_lambda(current_step: int) -> float:
+        if capped_warmup_steps > 0 and current_step < capped_warmup_steps:
+            return float(current_step + 1) / float(capped_warmup_steps)
+
+        remaining_steps = max(total_steps - capped_warmup_steps, 1)
+        return max(0.0, float(total_steps - (current_step + 1)) / float(remaining_steps))
+
+    return LambdaLR(optimizer, lr_lambda=lr_lambda)
+
+
+def train_epoch(
+    model,
+    dataloader,
+    optimizer,
+    criterion,
+    device: torch.device,
+    scheduler: LambdaLR | None = None,
+    gradient_accumulation_steps: int = 1,
+    max_grad_norm: float | None = None,
+) -> float:
     model.train()
     total_loss = 0.0
-    for batch in tqdm(dataloader, desc="Training", leave=False):
+    optimizer.zero_grad()
+    for step, batch in enumerate(tqdm(dataloader, desc="Training", leave=False), start=1):
         batch = move_batch_to_device(batch, device)
-        optimizer.zero_grad()
         loss, _, _ = forward_with_loss(model, batch, criterion)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
+        raw_loss = loss
+        (loss / gradient_accumulation_steps).backward()
+
+        should_step = step % gradient_accumulation_steps == 0 or step == len(dataloader)
+        if should_step:
+            if max_grad_norm is not None:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+            optimizer.step()
+            if scheduler is not None:
+                scheduler.step()
+            optimizer.zero_grad()
+
+        total_loss += raw_loss.item()
     return total_loss / max(len(dataloader), 1)
 
 
@@ -120,6 +178,7 @@ def main() -> None:
     args = parse_args()
     if args.model_type == "lstm":
         args.model_type = "bilstm"
+    args = resolve_training_defaults(args)
 
     set_seed(args.seed)
     output_dir = ensure_dir(args.output_dir)
@@ -147,6 +206,11 @@ def main() -> None:
             epochs=args.epochs,
             learning_rate=args.learning_rate,
             weight_decay=args.weight_decay,
+            gradient_accumulation_steps=args.gradient_accumulation_steps,
+            warmup_ratio=args.warmup_ratio,
+            warmup_steps=args.warmup_steps,
+            max_grad_norm=args.max_grad_norm,
+            early_stopping_patience=args.early_stopping_patience,
             local_files_only=args.local_files_only,
         )
         model = BertNLIClassifier(
@@ -184,13 +248,42 @@ def main() -> None:
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size) if test_dataset is not None else None
 
+    steps_per_epoch = math.ceil(len(train_loader) / args.gradient_accumulation_steps)
+    total_training_steps = steps_per_epoch * args.epochs
+    warmup_steps = args.warmup_steps if args.warmup_steps is not None else math.ceil(total_training_steps * args.warmup_ratio)
+    scheduler = build_linear_warmup_scheduler(
+        optimizer=optimizer,
+        total_steps=total_training_steps,
+        warmup_steps=warmup_steps,
+    )
+    args.warmup_steps = warmup_steps
+    if isinstance(config, BertNLIConfig):
+        config.warmup_steps = warmup_steps
+
     best_val_f1 = -1.0
     best_metrics = None
     best_predictions = None
     best_state_dict = None
+    epochs_without_improvement = 0
+
+    effective_batch_size = args.batch_size * args.gradient_accumulation_steps
+    print(
+        f"Training {args.model_type} with lr={args.learning_rate:g}, "
+        f"batch_size={args.batch_size}, effective_batch_size={effective_batch_size}, "
+        f"warmup_steps={warmup_steps}, total_optimizer_steps={total_training_steps}"
+    )
 
     for epoch in range(1, args.epochs + 1):
-        train_loss = train_epoch(model, train_loader, optimizer, criterion, device)
+        train_loss = train_epoch(
+            model,
+            train_loader,
+            optimizer,
+            criterion,
+            device,
+            scheduler=scheduler,
+            gradient_accumulation_steps=args.gradient_accumulation_steps,
+            max_grad_norm=args.max_grad_norm,
+        )
         val_loss, val_gold, val_pred = evaluate_model(model, val_loader, criterion, device)
         val_metrics = classification_metrics(val_gold, val_pred, labels=label_to_id.values())
         print(
@@ -204,10 +297,19 @@ def main() -> None:
             best_metrics = val_metrics
             best_predictions = (val_gold, val_pred)
             best_state_dict = copy.deepcopy(model.state_dict())
+            epochs_without_improvement = 0
             if args.model_type == "bert":
                 model.save_checkpoint(output_dir, tokenizer=tokenizer, config=config)
             else:
                 save_baseline_checkpoint(output_dir, model, vocab, label_to_id, args)
+        else:
+            epochs_without_improvement += 1
+            if epochs_without_improvement >= args.early_stopping_patience:
+                print(
+                    f"Early stopping after epoch {epoch}: "
+                    f"validation macro F1 did not improve for {epochs_without_improvement} consecutive epochs."
+                )
+                break
 
     if best_state_dict is not None:
         model.load_state_dict(best_state_dict)
@@ -248,3 +350,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
