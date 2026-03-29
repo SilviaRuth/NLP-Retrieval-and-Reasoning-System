@@ -165,9 +165,9 @@ Recommended run-3 workflow:
 python scripts/build_hard_set.py
 python scripts/generate_targeted_nli_data.py --negation 500 --numeric 300 --temporal 300 --long_reasoning 400 --output-path data/generated/targeted_nli_run3.json
 python train.py --config-path configs/bert_run3.json
-python scripts/eval_hard_set.py --checkpoint outputs/bert_run3
-python scripts/compare_runs.py --base outputs/bert_nli --candidate outputs/bert_run3
-python scripts/summarize_run.py --run outputs/bert_run3
+python scripts/eval_hard_set.py --checkpoint outputs/run
+python scripts/compare_runs.py --base outputs/bert_nli --candidate outputs/run
+python scripts/summarize_run.py --run outputs/run
 ```
 
 The training command now supports config-driven runs and writes:
