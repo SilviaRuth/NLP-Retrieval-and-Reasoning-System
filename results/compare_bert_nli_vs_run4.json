@@ -1,0 +1,22 @@
+{
+  "base_run": "outputs/bert_nli",
+  "candidate_run": "outputs/run4",
+  "comparison": {
+    "validation_accuracy_delta": null,
+    "validation_macro_f1_delta": null,
+    "test_accuracy_delta": null,
+    "test_macro_f1_delta": null,
+    "hard_set_macro_f1_delta": null,
+    "typo_macro_f1_delta": null,
+    "paraphrase_macro_f1_delta": null,
+    "shuffle_macro_f1_delta": null
+  },
+  "verdict": "inconclusive",
+  "reasons": [
+    "Missing one or more required metrics for a promotion decision."
+  ],
+  "thresholds": {
+    "hard_set_tolerance": 0.01,
+    "robustness_tolerance": 0.02
+  }
+}

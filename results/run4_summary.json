@@ -1,0 +1,291 @@
+{
+  "run": "outputs/run4",
+  "training_config": {
+    "model_name": "bert-base-uncased",
+    "train_path": "data/train.json",
+    "val_path": "data/validation.json",
+    "test_path": "data/test.json",
+    "output_dir": "outputs/run4",
+    "max_length": 256,
+    "batch_size": 4,
+    "effective_batch_size": 16,
+    "epochs": 5,
+    "learning_rate": 1e-05,
+    "weight_decay": 0.01,
+    "gradient_accumulation_steps": 4,
+    "warmup_ratio": 0.1,
+    "warmup_steps": 577,
+    "max_grad_norm": 1.0,
+    "early_stopping_patience": 1,
+    "seed": 42,
+    "augmentation_enabled": true,
+    "augmentation_path": "data/generated/targeted_nli_run4.json",
+    "augmentation_max_ratio": 0.25,
+    "local_files_only": false
+  },
+  "best_run_summary": {
+    "best_epoch": 4,
+    "train_loss": 0.33239646421204,
+    "val_loss": 1.8045373483747245,
+    "effective_batch_size": 16,
+    "total_optimizer_steps": 5765,
+    "warmup_steps": 577,
+    "git_commit": "47c37a21f8de3d1e031a63000bc40733a8cebb26",
+    "original_training_count": 16941,
+    "synthetic_training_count": 1498,
+    "synthetic_original_ratio": 0.08842453219998819,
+    "counts_by_synthetic_category": {
+      "long-premise short-hypothesis reasoning": 398,
+      "negation": 500,
+      "numeric contradiction": 300,
+      "temporal/date reasoning": 300
+    },
+    "augmentation_summary": {
+      "augmentation_enabled": true,
+      "augmentation_path": "data/generated/targeted_nli_run4.json",
+      "augmentation_max_ratio": 0.25,
+      "original_training_count": 16941,
+      "loaded_synthetic_count": 1498,
+      "synthetic_training_count": 1498,
+      "synthetic_original_ratio": 0.08842453219998819,
+      "counts_by_synthetic_category": {
+        "long-premise short-hypothesis reasoning": 398,
+        "negation": 500,
+        "numeric contradiction": 300,
+        "temporal/date reasoning": 300
+      },
+      "total_training_count": 18439,
+      "max_allowed_synthetic_count": 4235,
+      "capped_by_ratio": false,
+      "loaded_counts_by_synthetic_category": {
+        "long-premise short-hypothesis reasoning": 398,
+        "negation": 500,
+        "numeric contradiction": 300,
+        "temporal/date reasoning": 300
+      }
+    }
+  },
+  "metrics": {
+    "accuracy": 0.436,
+    "macro_precision": 0.4367864807272763,
+    "macro_recall": 0.4359629090168012,
+    "macro_f1": 0.43445959713178645,
+    "per_label": {
+      "0": {
+        "precision": 0.398989898989899,
+        "recall": 0.47305389221556887,
+        "f1": 0.4328767123287671,
+        "support": 334
+      },
+      "1": {
+        "precision": 0.38652482269503546,
+        "recall": 0.32732732732732733,
+        "f1": 0.3544715447154472,
+        "support": 333
+      },
+      "2": {
+        "precision": 0.5248447204968945,
+        "recall": 0.5075075075075075,
+        "f1": 0.5160305343511451,
+        "support": 333
+      }
+    },
+    "loss": 1.8045373483747245,
+    "best_epoch": 4,
+    "train_loss": 0.33239646421204
+  },
+  "test_metrics": {
+    "accuracy": 0.433,
+    "macro_precision": 0.4378519291045917,
+    "macro_recall": 0.43294791797785814,
+    "macro_f1": 0.43234433848590137,
+    "per_label": {
+      "0": {
+        "precision": 0.38848920863309355,
+        "recall": 0.48502994011976047,
+        "f1": 0.4314247669773636,
+        "support": 334
+      },
+      "1": {
+        "precision": 0.398576512455516,
+        "recall": 0.33633633633633636,
+        "f1": 0.3648208469055375,
+        "support": 333
+      },
+      "2": {
+        "precision": 0.5264900662251656,
+        "recall": 0.4774774774774775,
+        "f1": 0.5007874015748031,
+        "support": 333
+      }
+    },
+    "loss": 1.790644863307476
+  },
+  "robustness": {
+    "typo": {
+      "accuracy": 0.389,
+      "macro_precision": 0.41003379094502423,
+      "macro_recall": 0.3892185598772426,
+      "macro_f1": 0.35405190482761356,
+      "per_label": {
+        "0": {
+          "precision": 0.4253731343283582,
+          "recall": 0.17065868263473055,
+          "f1": 0.24358974358974364,
+          "support": 334
+        },
+        "1": {
+          "precision": 0.3669172932330827,
+          "recall": 0.7327327327327328,
+          "f1": 0.48897795591182364,
+          "support": 333
+        },
+        "2": {
+          "precision": 0.43781094527363185,
+          "recall": 0.26426426426426425,
+          "f1": 0.3295880149812734,
+          "support": 333
+        }
+      }
+    },
+    "paraphrase": {
+      "accuracy": 0.434,
+      "macro_precision": 0.435006299083527,
+      "macro_recall": 0.4339609070147992,
+      "macro_f1": 0.43255536579362425,
+      "per_label": {
+        "0": {
+          "precision": 0.3979848866498741,
+          "recall": 0.47305389221556887,
+          "f1": 0.4322845417236662,
+          "support": 334
+        },
+        "1": {
+          "precision": 0.38515901060070673,
+          "recall": 0.32732732732732733,
+          "f1": 0.3538961038961039,
+          "support": 333
+        },
+        "2": {
+          "precision": 0.521875,
+          "recall": 0.5015015015015015,
+          "f1": 0.5114854517611026,
+          "support": 333
+        }
+      }
+    },
+    "shuffle": {
+      "accuracy": 0.361,
+      "macro_precision": 0.3691970131862376,
+      "macro_recall": 0.3610826395257533,
+      "macro_f1": 0.3591028560943244,
+      "per_label": {
+        "0": {
+          "precision": 0.3152542372881356,
+          "recall": 0.27844311377245506,
+          "f1": 0.29570747217806037,
+          "support": 334
+        },
+        "1": {
+          "precision": 0.33995584988962474,
+          "recall": 0.4624624624624625,
+          "f1": 0.39185750636132316,
+          "support": 333
+        },
+        "2": {
+          "precision": 0.4523809523809524,
+          "recall": 0.34234234234234234,
+          "f1": 0.38974358974358975,
+          "support": 333
+        }
+      }
+    }
+  },
+  "hard_set_metrics": {
+    "accuracy": 0.39820359281437123,
+    "macro_precision": 0.3484681278062614,
+    "macro_recall": 0.37670200320802727,
+    "macro_f1": 0.3013534160867856,
+    "per_label": {
+      "1": {
+        "precision": 0.5373134328358209,
+        "recall": 0.3253012048192771,
+        "f1": 0.4052532833020637,
+        "support": 332
+      },
+      "0": {
+        "precision": 0.5015974440894568,
+        "recall": 0.47147147147147145,
+        "f1": 0.48606811145510836,
+        "support": 333
+      },
+      "2": {
+        "precision": 0.006493506493506494,
+        "recall": 0.3333333333333333,
+        "f1": 0.012738853503184714,
+        "support": 3
+      }
+    },
+    "loss": 1.8675775863453299,
+    "count": 668,
+    "buckets": {
+      "negation": {
+        "count": 73,
+        "accuracy": 0.4794520547945205,
+        "macro_f1": 0.32575757575757575,
+        "macro_precision": 0.3682539682539683,
+        "macro_recall": 0.3031446540880503
+      },
+      "long_sequence": {
+        "count": 668,
+        "accuracy": 0.39820359281437123,
+        "macro_f1": 0.3013534160867856,
+        "macro_precision": 0.3484681278062614,
+        "macro_recall": 0.37670200320802727
+      },
+      "numeric_date": {
+        "count": 615,
+        "accuracy": 0.4032520325203252,
+        "macro_f1": 0.3050851536149288,
+        "macro_precision": 0.35315061328657654,
+        "macro_recall": 0.38101172820383167
+      }
+    }
+  },
+  "artifact_paths": {
+    "metrics": "outputs/run4/metrics.json",
+    "test_metrics": "outputs/run4/test_metrics.json",
+    "robustness": "outputs/run4/robustness.json",
+    "hard_set_metrics": "outputs/run4/hard_set_metrics.json",
+    "best_run_summary": "outputs/run4/best_run_summary.json",
+    "run_status": "outputs/run4/run_status.json"
+  },
+  "final_verdict": {
+    "verdict": "inconclusive",
+    "reasons": [
+      "Missing one or more required metrics for a promotion decision."
+    ]
+  },
+  "comparison_report": {
+    "base_run": "outputs/bert_nli",
+    "candidate_run": "outputs/run4",
+    "comparison": {
+      "validation_accuracy_delta": null,
+      "validation_macro_f1_delta": null,
+      "test_accuracy_delta": null,
+      "test_macro_f1_delta": null,
+      "hard_set_macro_f1_delta": null,
+      "typo_macro_f1_delta": null,
+      "paraphrase_macro_f1_delta": null,
+      "shuffle_macro_f1_delta": null
+    },
+    "verdict": "inconclusive",
+    "reasons": [
+      "Missing one or more required metrics for a promotion decision."
+    ],
+    "thresholds": {
+      "hard_set_tolerance": 0.01,
+      "robustness_tolerance": 0.02
+    }
+  }
+}
