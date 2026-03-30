@@ -1,0 +1,35 @@
+{
+  "total_generated": 1500,
+  "total_accepted": 1498,
+  "total_rejected": 2,
+  "counts_by_category": {
+    "negation": 500,
+    "numeric contradiction": 300,
+    "temporal/date reasoning": 300,
+    "long-premise short-hypothesis reasoning": 398
+  },
+  "requested_counts": {
+    "negation": 500,
+    "numeric": 300,
+    "temporal": 300,
+    "long_reasoning": 400
+  },
+  "seed": 42,
+  "output_path": "data\\generated\\targeted_nli_run4.json",
+  "rejected_output_path": "data\\generated\\rejected_targeted_nli_run4.json",
+  "validation_report_path": "data\\generated\\targeted_nli_run4_validation_report.json",
+  "summary_path": "data\\generated\\targeted_nli_run4_summary.json",
+  "generation_discarded_by_category": {
+    "negation": {
+      "failed:negation_none_wrong_entailment": 51,
+      "failed:negation_not_all_wrong_contradiction": 50,
+      "failed:duplicate_example": 7
+    },
+    "numeric contradiction": {},
+    "temporal/date reasoning": {},
+    "long-premise short-hypothesis reasoning": {
+      "failed:duplicate_example": 1
+    }
+  },
+  "config_path": "configs/targeted_nli_generation_v1.json"
+}

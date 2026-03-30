@@ -1,0 +1,9 @@
+{
+  "negation": 500,
+  "numeric": 300,
+  "temporal": 300,
+  "long_reasoning": 400,
+  "seed": 42,
+  "output": "data/generated/targeted_nli_v1.json",
+  "summary_output": "data/generated/targeted_nli_v1_summary.json"
+}

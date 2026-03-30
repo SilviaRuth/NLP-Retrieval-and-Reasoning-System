@@ -1,8 +1,10 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
+from collections import Counter
 import copy
 import math
+import random
 import subprocess
 from dataclasses import asdict
 from pathlib import Path
@@ -43,8 +45,7 @@ def parse_args() -> argparse.Namespace:
     config_defaults = load_config_defaults(bootstrap_args.config_path)
 
     parser = argparse.ArgumentParser(description="Train an NLI classification model.")
-    if config_defaults:
-        parser.set_defaults(**config_defaults)
+
     parser.add_argument("--config-path")
     parser.add_argument("--train-path")
     parser.add_argument("--val-path")
@@ -67,6 +68,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-freq", type=int, default=2)
     parser.add_argument("--augmentation-path")
     parser.add_argument("--augmentation-enabled", action="store_true")
+    parser.add_argument("--augmentation-max-ratio", type=float, default=0.25)
+    if config_defaults:
+        parser.set_defaults(**config_defaults)
     args = parser.parse_args()
     if not args.train_path or not args.val_path:
         raise ValueError("train_path and val_path must be provided either directly or through config_path")
@@ -85,10 +89,10 @@ def resolve_training_defaults(args: argparse.Namespace) -> argparse.Namespace:
         raise ValueError("warmup_ratio must be in the range [0.0, 1.0)")
     if args.early_stopping_patience < 1:
         raise ValueError("early_stopping_patience must be at least 1")
-    if args.augmentation_path:
-        args.augmentation_enabled = True
     if args.augmentation_enabled and not args.augmentation_path:
         raise ValueError("augmentation_enabled requires augmentation_path")
+    if not 0.0 < args.augmentation_max_ratio <= 1.0:
+        raise ValueError("augmentation_max_ratio must be in the range (0.0, 1.0]")
     return args
 
 
@@ -214,14 +218,162 @@ def resolve_git_commit() -> str | None:
     return result.stdout.strip() or None
 
 
-def load_augmentation_examples(augmentation_path: str) -> tuple[list, dict]:
+def extract_examples_payload(payload, augmentation_path: str) -> list[dict]:
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict) and isinstance(payload.get("examples"), list):
+        return payload["examples"]
+    raise ValueError(f"Unsupported augmentation dataset format in {augmentation_path}")
+
+
+def count_synthetic_categories(raw_examples: list[dict]) -> dict[str, int]:
+    counts: Counter[str] = Counter()
+    for example in raw_examples:
+        category = str(example.get("category", "uncategorized"))
+        counts[category] += 1
+    return dict(sorted(counts.items()))
+
+
+def format_count_summary(counts: dict[str, int]) -> str:
+    if not counts:
+        return "none"
+    return ", ".join(f"{category}={count}" for category, count in counts.items())
+
+
+def build_augmentation_summary(
+    *,
+    augmentation_enabled: bool,
+    augmentation_path: str | None,
+    augmentation_max_ratio: float,
+    original_training_count: int,
+    loaded_synthetic_count: int,
+    synthetic_training_count: int,
+    counts_by_synthetic_category: dict[str, int],
+    loaded_counts_by_synthetic_category: dict[str, int] | None = None,
+    max_allowed_synthetic_count: int = 0,
+    capped_by_ratio: bool = False,
+) -> dict:
+    synthetic_original_ratio = 0.0
+    if original_training_count > 0:
+        synthetic_original_ratio = synthetic_training_count / original_training_count
+
+    summary = {
+        "augmentation_enabled": augmentation_enabled,
+        "augmentation_path": augmentation_path,
+        "augmentation_max_ratio": augmentation_max_ratio,
+        "original_training_count": original_training_count,
+        "loaded_synthetic_count": loaded_synthetic_count,
+        "synthetic_training_count": synthetic_training_count,
+        "synthetic_original_ratio": synthetic_original_ratio,
+        "counts_by_synthetic_category": dict(sorted(counts_by_synthetic_category.items())),
+        "total_training_count": original_training_count + synthetic_training_count,
+        "max_allowed_synthetic_count": max_allowed_synthetic_count,
+        "capped_by_ratio": capped_by_ratio,
+    }
+    if loaded_counts_by_synthetic_category is not None:
+        summary["loaded_counts_by_synthetic_category"] = dict(sorted(loaded_counts_by_synthetic_category.items()))
+    return summary
+
+
+def load_augmentation_examples(
+    augmentation_path: str,
+    original_training_count: int,
+    augmentation_max_ratio: float,
+    seed: int,
+) -> tuple[list, dict]:
+    if original_training_count <= 0:
+        raise ValueError("augmentation requires at least one original training example")
+
     payload = read_json(augmentation_path)
+    raw_examples = extract_examples_payload(payload, augmentation_path)
     examples = load_nli_dataset(augmentation_path)
-    summary = payload.get("summary") if isinstance(payload, dict) else None
-    if summary is None:
-        summary = {"total_examples": len(examples)}
-    summary["loaded_examples"] = len(examples)
-    return examples, summary
+    if len(raw_examples) != len(examples):
+        raise ValueError("augmentation payload metadata does not align with loaded examples")
+
+    loaded_counts_by_category = count_synthetic_categories(raw_examples)
+    loaded_synthetic_count = len(examples)
+    max_allowed_synthetic_count = math.floor(original_training_count * augmentation_max_ratio)
+
+    selected_indices = list(range(loaded_synthetic_count))
+    capped_by_ratio = loaded_synthetic_count > max_allowed_synthetic_count
+    if capped_by_ratio:
+        rng = random.Random(seed)
+        rng.shuffle(selected_indices)
+        selected_indices = sorted(selected_indices[:max_allowed_synthetic_count])
+
+    selected_examples = [examples[index] for index in selected_indices]
+    selected_raw_examples = [raw_examples[index] for index in selected_indices]
+    selected_counts_by_category = count_synthetic_categories(selected_raw_examples)
+
+    summary = build_augmentation_summary(
+        augmentation_enabled=True,
+        augmentation_path=augmentation_path,
+        augmentation_max_ratio=augmentation_max_ratio,
+        original_training_count=original_training_count,
+        loaded_synthetic_count=loaded_synthetic_count,
+        synthetic_training_count=len(selected_examples),
+        counts_by_synthetic_category=selected_counts_by_category,
+        loaded_counts_by_synthetic_category=loaded_counts_by_category,
+        max_allowed_synthetic_count=max_allowed_synthetic_count,
+        capped_by_ratio=capped_by_ratio,
+    )
+    return selected_examples, summary
+
+
+def prepare_training_examples(args: argparse.Namespace, original_train_examples: list):
+    original_training_count = len(original_train_examples)
+    train_examples = list(original_train_examples)
+    augmentation_summary = build_augmentation_summary(
+        augmentation_enabled=False,
+        augmentation_path=args.augmentation_path,
+        augmentation_max_ratio=args.augmentation_max_ratio,
+        original_training_count=original_training_count,
+        loaded_synthetic_count=0,
+        synthetic_training_count=0,
+        counts_by_synthetic_category={},
+        max_allowed_synthetic_count=math.floor(original_training_count * args.augmentation_max_ratio),
+        capped_by_ratio=False,
+    )
+
+    if not args.augmentation_enabled:
+        if args.augmentation_path:
+            print(f"Augmentation disabled; ignoring synthetic dataset at {args.augmentation_path}")
+        return train_examples, augmentation_summary
+
+    augmentation_examples, augmentation_summary = load_augmentation_examples(
+        args.augmentation_path,
+        original_training_count=original_training_count,
+        augmentation_max_ratio=args.augmentation_max_ratio,
+        seed=args.seed,
+    )
+    print(
+        f"Loaded {augmentation_summary['loaded_synthetic_count']} synthetic examples from {args.augmentation_path}"
+    )
+    print(
+        f"Synthetic category counts: {format_count_summary(augmentation_summary['loaded_counts_by_synthetic_category'])}"
+    )
+    if augmentation_summary["capped_by_ratio"]:
+        print(
+            "Applied augmentation cap: "
+            f"using {augmentation_summary['synthetic_training_count']} synthetic examples "
+            f"out of {augmentation_summary['loaded_synthetic_count']} "
+            f"to satisfy augmentation_max_ratio={args.augmentation_max_ratio:g}"
+        )
+    train_examples.extend(augmentation_examples)
+    print(
+        f"Final training mix: original={augmentation_summary['original_training_count']}, "
+        f"synthetic={augmentation_summary['synthetic_training_count']}, "
+        f"ratio={augmentation_summary['synthetic_original_ratio']:.4f}"
+    )
+    print(
+        f"Synthetic category counts used for training: "
+        f"{format_count_summary(augmentation_summary['counts_by_synthetic_category'])}"
+    )
+    return train_examples, augmentation_summary
+
+
+def export_effective_training_config(output_dir: Path, config_payload: dict) -> None:
+    write_json(output_dir / "training_config.json", config_payload)
 
 
 def export_best_run_artifacts(
@@ -287,6 +439,10 @@ def export_best_run_artifacts(
         "total_optimizer_steps": total_training_steps,
         "warmup_steps": warmup_steps,
         "git_commit": git_commit,
+        "original_training_count": augmentation_summary["original_training_count"] if augmentation_summary else 0,
+        "synthetic_training_count": augmentation_summary["synthetic_training_count"] if augmentation_summary else 0,
+        "synthetic_original_ratio": augmentation_summary["synthetic_original_ratio"] if augmentation_summary else 0.0,
+        "counts_by_synthetic_category": augmentation_summary["counts_by_synthetic_category"] if augmentation_summary else {},
         "augmentation_summary": augmentation_summary,
     }
     write_json(output_dir / "best_run_summary.json", run_summary)
@@ -303,12 +459,9 @@ def main() -> None:
     output_dir = ensure_dir(args.output_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_examples = load_nli_dataset(args.train_path)
-    augmentation_summary = None
-    if args.augmentation_enabled and args.augmentation_path:
-        augmentation_examples, augmentation_summary = load_augmentation_examples(args.augmentation_path)
-        train_examples = [*train_examples, *augmentation_examples]
-        write_json(output_dir / "augmentation_summary.json", augmentation_summary)
+    original_train_examples = load_nli_dataset(args.train_path)
+    train_examples, augmentation_summary = prepare_training_examples(args, original_train_examples)
+    write_json(output_dir / "augmentation_summary.json", augmentation_summary)
 
     val_examples = load_nli_dataset(args.val_path)
     test_examples = load_nli_dataset(args.test_path) if args.test_path else []
@@ -345,6 +498,7 @@ def main() -> None:
             seed=args.seed,
             augmentation_enabled=args.augmentation_enabled,
             augmentation_path=args.augmentation_path,
+            augmentation_max_ratio=args.augmentation_max_ratio,
             local_files_only=args.local_files_only,
         )
         model = BertNLIClassifier(
@@ -393,6 +547,11 @@ def main() -> None:
     args.warmup_steps = warmup_steps
     if isinstance(config, BertNLIConfig):
         config.warmup_steps = warmup_steps
+
+    export_effective_training_config(
+        output_dir,
+        asdict(config) if isinstance(config, BertNLIConfig) else dict(config),
+    )
 
     best_val_f1 = -1.0
     best_metrics = None

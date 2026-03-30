@@ -1,0 +1,32 @@
+[
+  {
+    "premise": "Felix drafted the site memo before noon. Elena checked the figures but did not edit the site memo. After the corrections were approved, Felix emailed the final site memo to the director.",
+    "hypothesis": "The director printed the site memo immediately.",
+    "label": "neutral",
+    "source": "synthetic",
+    "generation_method": "diverse_targeted_nli_v2",
+    "category": "long-premise short-hypothesis reasoning",
+    "template_id": "long_reasoning_assignment",
+    "seed": 400296,
+    "validation_status": "rejected",
+    "rejection_reasons": [
+      "duplicate_near"
+    ],
+    "rejection_index": 1353
+  },
+  {
+    "premise": "Hugo drafted the inventory report before noon. Ava checked the figures but did not edit the inventory report. After the corrections were approved, Hugo emailed the final inventory report to the director.",
+    "hypothesis": "The director printed the inventory report immediately.",
+    "label": "neutral",
+    "source": "synthetic",
+    "generation_method": "diverse_targeted_nli_v2",
+    "category": "long-premise short-hypothesis reasoning",
+    "template_id": "long_reasoning_assignment",
+    "seed": 400404,
+    "validation_status": "rejected",
+    "rejection_reasons": [
+      "duplicate_near"
+    ],
+    "rejection_index": 1461
+  }
+]

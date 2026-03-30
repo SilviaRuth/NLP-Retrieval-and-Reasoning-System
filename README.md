@@ -5,7 +5,7 @@ This repository turns an NLI coursework notebook into a modular retrieval-and-re
 1. Stage 1 dense retrieval with SentenceTransformers + FAISS, with TF-IDF fallback.
 2. Stage 2 NLI reranking with a BERT classifier that scores entailment against each retrieved candidate.
 
-The project now treats evaluation as a multi-signal decision rather than a single headline number. A run is considered strong only if it performs well on clean validation/test splits, hard reasoning cases, robustness checks, and reproducibility artifacts.
+The project now treats evaluation as a multi-signal decision rather than a single headline number. A run is considered strong only if it performs well on clean validation and test splits, hard reasoning cases, robustness checks, and reproducibility artifacts.
 
 ## Architecture Diagram
 
@@ -102,6 +102,28 @@ The tables below reflect the fully exported baseline runs currently checked into
 
 Compared with the 1st training, the 2nd BERT run improved validation accuracy by `+0.027` and validation macro F1 by `+0.0248`. The gain is real but still modest for a balanced 3-class NLI task, and the main remaining issues are long-context reasoning, negation handling, and weak robustness under shuffle and typo noise.
 
+## Recommended Workflow
+
+A clean end-to-end workflow for a new experiment is:
+
+1. Build or refresh the hard set.
+2. Generate targeted synthetic NLI data into `data/generated/`.
+3. Review a stratified Markdown sample before training.
+4. Train with `augmentation_enabled=true` only if the reviewed synthetic set is acceptable.
+5. Evaluate the checkpoint on the hard set, compare it to the baseline, and summarize the run.
+
+Recommended run-4 commands:
+
+```bash
+python scripts/build_hard_set.py
+python scripts/generate_targeted_nli_data.py --config configs/targeted_nli_generation_v1.json --output data/generated/targeted_nli_run4.json --summary-output data/generated/targeted_nli_run4_summary.json
+python scripts/sample_generated_data.py --input data/generated/targeted_nli_run4.json --output data/generated/review_sample_targeted_nli_run4.md --per-category 12 --seed 13
+python train.py --config-path configs/bert_run4.json
+python scripts/eval_hard_set.py --checkpoint outputs/run4
+python scripts/compare_runs.py --base outputs/bert_nli --candidate outputs/run4
+python scripts/summarize_run.py --run outputs/run4
+```
+
 ## Hard-Set Workflow
 
 Build the curated hard set from the latest exported error analysis:
@@ -121,6 +143,81 @@ This writes `hard_set_metrics.json` under the checkpoint directory by default an
 - hard-set accuracy
 - hard-set macro F1
 - per-bucket results for `negation`, `long_sequence`, and `numeric_date`
+
+## Targeted Synthetic Augmentation
+
+Generate targeted synthetic NLI data for the main failure buckets:
+
+```bash
+python scripts/generate_targeted_nli_data.py --config configs/targeted_nli_generation_v1.json
+```
+
+The generation config at [configs/targeted_nli_generation_v1.json](configs/targeted_nli_generation_v1.json) currently sets category counts, seed, and default output paths for the synthetic dataset.
+
+The generator writes four artifacts:
+
+- accepted synthetic examples, for example `data/generated/targeted_nli_v1.json`
+- rejected synthetic examples, for example `data/generated/rejected_targeted_nli_v1.json`
+- a validation report, for example `data/generated/targeted_nli_v1_validation_report.json`
+- a generation summary, for example `data/generated/targeted_nli_v1_summary.json`
+
+Every accepted example includes trace metadata such as `source`, `generation_method`, `category`, `template_id`, `seed`, and `validation_status`.
+
+### Optional Standalone Validation
+
+The generator already runs validation before saving final accepted examples. If you want to revalidate an existing synthetic file, use:
+
+```bash
+python scripts/validate_targeted_nli_data.py --input data/generated/targeted_nli_run4.json --output data/generated/targeted_nli_run4_validated.json
+```
+
+That command also writes a rejected audit file and a validation report next to the chosen output path.
+
+### Review Sample Before Training
+
+Create a small stratified QA sample before training:
+
+```bash
+python scripts/sample_generated_data.py --input data/generated/targeted_nli_run4.json --output data/generated/review_sample_targeted_nli_run4.md --per-category 12 --seed 13
+```
+
+The review sampler reads either a flat list of examples or a wrapped payload with an `examples` field, then exports a Markdown file stratified by category and label for manual inspection. This step is for human QA only and does not trigger training.
+
+## Training With Optional Augmentation
+
+The run-4 training config lives at [configs/bert_run4.json](configs/bert_run4.json). Legacy run-3 artifacts have been moved to `outputs/run3`, and the new run-4 config writes to `outputs/run4`.
+
+Synthetic data is optional and never mixed silently into the original dataset. The training config supports:
+
+- `augmentation_enabled`
+- `augmentation_path`
+- `augmentation_max_ratio`
+
+Training behavior is:
+
+- if `augmentation_enabled` is `false`, training uses only `train_path`
+- if `augmentation_enabled` is `true`, training loads synthetic examples from `augmentation_path`
+- synthetic examples are capped so `synthetic/original <= augmentation_max_ratio`
+- validation and test always come only from `val_path` and `test_path`
+
+Start training with the checked-in run-4 config:
+
+```bash
+python train.py --config-path configs/bert_run4.json
+```
+
+The training command writes:
+
+- `training_config.json`
+- `metrics.json`
+- `error_analysis.json`
+- `robustness.json`
+- `test_metrics.json`
+- `best_run_summary.json`
+- `run_status.json`
+- `augmentation_summary.json`
+
+`training_config.json` is the effective config used for the run. `augmentation_summary.json` records the original training count, synthetic training count, synthetic/original ratio, and counts by synthetic category.
 
 ## Run Comparison and Promotion Gate
 
@@ -144,42 +241,6 @@ The comparison workflow checks:
 - paraphrase robustness
 - shuffle robustness
 - hard-set performance
-
-## Targeted Augmentation
-
-Generate targeted synthetic NLI data for the main failure buckets:
-
-```bash
-python scripts/generate_targeted_nli_data.py --negation 500 --numeric 300 --temporal 300 --long_reasoning 400
-```
-
-The script writes a separate augmentation file and summary under `data/generated/`. Training can then include it with `augmentation_path` in the run config.
-
-## Run 3 Config
-
-A dedicated run-3 config now lives at [configs/bert_run3.json](configs/bert_run3.json).
-
-Recommended run-3 workflow:
-
-```bash
-python scripts/build_hard_set.py
-python scripts/generate_targeted_nli_data.py --negation 500 --numeric 300 --temporal 300 --long_reasoning 400 --output-path data/generated/targeted_nli_run3.json
-python train.py --config-path configs/bert_run3.json
-python scripts/eval_hard_set.py --checkpoint outputs/run
-python scripts/compare_runs.py --base outputs/bert_nli --candidate outputs/run
-python scripts/summarize_run.py --run outputs/run
-```
-
-The training command now supports config-driven runs and writes:
-
-- `training_config.json`
-- `metrics.json`
-- `error_analysis.json`
-- `robustness.json`
-- `test_metrics.json`
-- `best_run_summary.json`
-- `run_status.json`
-- `augmentation_summary.json` when augmentation is enabled
 
 ## Retrieval and Full Pipeline Commands
 

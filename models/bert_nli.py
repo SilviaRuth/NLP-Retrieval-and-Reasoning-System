@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -36,6 +36,7 @@ class BertNLIConfig:
     seed: int = 42
     augmentation_enabled: bool = False
     augmentation_path: str | None = None
+    augmentation_max_ratio: float = 0.25
     local_files_only: bool = False
 
 

@@ -1,0 +1,11 @@
+{
+  "total_generated": 1500,
+  "total_accepted": 1498,
+  "total_rejected": 2,
+  "rejection_reasons_by_count": {
+    "duplicate_near": 2
+  },
+  "accepted_output_path": "data\\generated\\targeted_nli_run4.json",
+  "rejected_output_path": "data\\generated\\rejected_targeted_nli_run4.json",
+  "validation_report_path": "data\\generated\\targeted_nli_run4_validation_report.json"
+}
